@@ -6,13 +6,12 @@ on:
   workflow_dispatch:
     inputs:
       todas:
-        description: 'Buscar as 24 datas de uma vez (gasta 24 buscas do plano grátis)'
+        description: 'Buscar todas as datas à venda de uma vez (gasta mais buscas do plano grátis)'
         type: boolean
         default: false
 
 permissions:
   contents: write
-  issues: write
 
 concurrency:
   group: coletar
@@ -22,39 +21,28 @@ jobs:
   coletar:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
-          node-version: '20'
+          node-version: '22'
 
-      - name: Buscar preços no SerpApi
+      - name: Buscar preços e mandar o resumo no WhatsApp
         env:
           SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          WHATSAPP_DESTINOS: ${{ secrets.WHATSAPP_DESTINOS }}
           TODAS_AS_DATAS: ${{ inputs.todas }}
+          SITE_URL: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/
         run: node scripts/coletar.mjs
 
       - name: Salvar histórico
         run: |
           git config user.name "monitor-passagens"
           git config user.email "monitor-passagens@users.noreply.github.com"
-          git add data/historico.json
+          git add data/historico.json data/sites.json
           if git diff --cached --quiet; then
             echo "Sem mudanças."
           else
             git commit -m "Preços de $(TZ=America/Sao_Paulo date +%d/%m/%Y)"
             git push
-          fi
-
-      - name: Avisar por e-mail se o preço caiu
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          if [ -s data/alerta.txt ]; then
-            gh issue create --title "$(cat data/alerta.txt | cut -c1-200)" \
-              --body "$(cat data/alerta.txt)
-
-          Veja o site: https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/"
-          else
-            echo "Nenhuma queda de preço."
           fi
