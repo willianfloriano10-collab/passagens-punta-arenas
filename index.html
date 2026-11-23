@@ -1,0 +1,340 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Floripa → Punta Arenas</title>
+<meta name="description" content="Monitor de preços de passagens ida e volta Florianópolis–Punta Arenas para outubro de 2027.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* Layout: coluna única, cabeçalho tipo cartão de embarque, calendário de outubro como peça central */
+  :root {
+    --bg: #f3f6f7;
+    --panel: #ffffff;
+    --ink: #10232e;
+    --muted: #5a6f7a;
+    --line: #d7e1e5;
+    --glacier: #0f7c8c;
+    --glacier-soft: #d9eff1;
+    --best: #1b8a4b;
+    --best-soft: #dcf2e4;
+    --warn: #b4541b;
+    --off: #e7edef;
+    --display: 'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+    --body: 'Inter', 'Segoe UI', system-ui, sans-serif;
+    --mono: 'JetBrains Mono', ui-monospace, Consolas, monospace;
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #0c171d; --panel: #13232b; --ink: #e5eef1; --muted: #93a8b2; --line: #24383f;
+      --glacier: #4cc3d1; --glacier-soft: #123940; --best: #5bd38f; --best-soft: #143a27; --warn: #f0a36c; --off: #1a2b33;
+      color-scheme: dark;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.55 var(--body); }
+  .wrap { max-width: 980px; margin: 0 auto; padding-block: 28px 56px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 28px; }
+  h1, h2 { font-family: var(--display); text-wrap: balance; margin: 0; }
+  h1 { font-size: clamp(1.9rem, 5vw, 2.8rem); font-weight: 700; letter-spacing: -.01em; line-height: 1.1; }
+  h2 { font-size: 1.25rem; font-weight: 500; }
+  .muted { color: var(--muted); }
+  .num { font-variant-numeric: tabular-nums; }
+
+  /* Cartão de embarque */
+  .pass { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .pass-main { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+  .route { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+  .iata { font-family: var(--mono); font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1; letter-spacing: .02em; }
+  .city { font-size: .8rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
+  .arrow { flex: 1; min-width: 40px; height: 2px; background: repeating-linear-gradient(90deg, var(--glacier) 0 8px, transparent 8px 14px); position: relative; }
+  .arrow::after { content: "✈"; position: absolute; right: -4px; top: -11px; color: var(--glacier); font-size: 16px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 6px 22px; font-size: .85rem; }
+  .meta b { display: block; font-size: .7rem; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; font-weight: 500; }
+  .stub { border-left: 2px dashed var(--line); padding: 22px 24px; display: flex; flex-direction: column; justify-content: center; gap: 4px; min-width: 210px; background: var(--glacier-soft); }
+  .stub .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .stub .big { font-family: var(--display); font-weight: 700; font-size: 2.3rem; line-height: 1.05; }
+  .stub .sub { font-size: .85rem; }
+  @media (max-width: 640px) { .pass { grid-template-columns: 1fr; } .stub { border-left: 0; border-top: 2px dashed var(--line); min-width: 0; } }
+
+  .take { font-size: 1.05rem; max-width: 65ch; margin: 0; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
+  .tile { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+  .tile .lbl { font-size: .72rem; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+  .tile .val { font-family: var(--display); font-size: 1.6rem; font-weight: 500; }
+  .good { color: var(--best); } .bad { color: var(--warn); }
+
+  section { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .sec-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 8px; }
+
+  /* Calendário */
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; }
+  .dow { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); text-align: center; padding-bottom: 2px; }
+  .day { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; min-height: 74px; padding: 7px 8px; display: flex; flex-direction: column; justify-content: space-between; color: inherit; text-decoration: none; min-width: 0; }
+  a.day:hover, a.day:focus-visible { border-color: var(--glacier); outline: none; box-shadow: 0 0 0 2px var(--glacier-soft); }
+  .day .d { font-family: var(--mono); font-size: .8rem; color: var(--muted); }
+  .day .p { font-weight: 600; font-size: .92rem; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+  .day .s { font-size: .68rem; color: var(--muted); }
+  .day.best { background: var(--best-soft); border-color: var(--best); }
+  .day.best .p { color: var(--best); }
+  .day.wait { background: var(--off); }
+  .day.none { background: transparent; border-style: dashed; }
+  .day.blank { visibility: hidden; }
+  @media (max-width: 520px) { .day { min-height: 60px; padding: 5px; } .day .p { font-size: .76rem; } .day .s { display: none; } }
+  .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); }
+
+  /* Gráfico */
+  .chart { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; position: relative; min-height: 220px; }
+  .chart svg { display: block; width: 100%; height: 220px; }
+  .chart text { fill: var(--muted); font: 11px var(--body); }
+  .tip { position: absolute; pointer-events: none; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 4px 8px; font-size: .8rem; box-shadow: 0 4px 14px rgba(0,0,0,.12); white-space: nowrap; }
+
+  /* Tabela */
+  .tablewrap { overflow-x: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; }
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); white-space: nowrap; font-size: .88rem; }
+  th { font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+  tr:last-child td { border-bottom: 0; }
+  td.r, th.r { text-align: right; }
+  .pill { display: inline-block; padding: 1px 9px; border-radius: 999px; font-size: .74rem; border: 1px solid currentColor; }
+  .pill.best { color: var(--best); } .pill.ok { color: var(--glacier); } .pill.wait { color: var(--muted); }
+  a { color: var(--glacier); }
+  a:focus-visible { outline: 2px solid var(--glacier); outline-offset: 2px; }
+
+  details { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px 16px; }
+  summary { cursor: pointer; font-weight: 500; }
+  details p { max-width: 70ch; }
+  .err { color: var(--warn); }
+  footer { font-size: .8rem; color: var(--muted); }
+</style>
+</head>
+<body>
+<main class="wrap">
+  <header class="pass" aria-label="Resumo da viagem">
+    <div class="pass-main">
+      <div class="route">
+        <div><div class="iata">FLN</div><div class="city">Florianópolis</div></div>
+        <div class="arrow" aria-hidden="true"></div>
+        <div><div class="iata">PUQ</div><div class="city">Punta Arenas</div></div>
+      </div>
+      <h1>Floripa → Punta Arenas</h1>
+      <div class="meta">
+        <div><b>Viagem</b>Ida e volta · 7 dias</div>
+        <div><b>Idas</b>1 a 24 de outubro de 2027</div>
+        <div><b>Passageiros</b>1 adulto · econômica</div>
+        <div><b>Referência</b>R$ 2.471 (LATAM, 23/11/2026)</div>
+      </div>
+    </div>
+    <div class="stub">
+      <span class="lbl">Menor preço agora</span>
+      <span class="big num" id="menor">—</span>
+      <span class="sub" id="menor-datas">carregando…</span>
+    </div>
+  </header>
+
+  <p class="take" id="frase">Carregando os preços…</p>
+
+  <div class="tiles">
+    <div class="tile"><span class="lbl">Contra a referência</span><span class="val num" id="vs-ref">—</span><span class="muted" style="font-size:.82rem">R$ 2.471 encontrado em 23/11</span></div>
+    <div class="tile"><span class="lbl">Datas de ida à venda</span><span class="val num" id="liberadas">—</span><span class="muted" style="font-size:.82rem">de 24 possíveis</span></div>
+    <div class="tile"><span class="lbl">Última verificação</span><span class="val num" id="ultima">—</span><span class="muted" style="font-size:.82rem" id="ultima-nota">&nbsp;</span></div>
+  </div>
+
+  <section id="calendario">
+    <div class="sec-head">
+      <h2>Outubro de 2027: preço por dia de ida</h2>
+      <span class="muted" style="font-size:.85rem">Toque num dia para abrir a busca no Google Flights</span>
+    </div>
+    <div class="legend">
+      <span><i style="background:var(--best-soft);border-color:var(--best)"></i>Mais barato</span>
+      <span><i style="background:var(--panel)"></i>À venda</span>
+      <span><i style="background:var(--off)"></i>Ainda não à venda</span>
+      <span><i style="background:transparent;border-style:dashed"></i>Só volta (sem ida monitorada)</span>
+    </div>
+    <div class="cal" id="cal" role="grid" aria-label="Calendário de outubro de 2027 com preços"></div>
+  </section>
+
+  <section id="evolucao">
+    <h2>Menor preço a cada verificação</h2>
+    <div class="chart" id="chart"><svg id="svg" role="img" aria-label="Menor preço encontrado em cada dia de verificação"></svg></div>
+  </section>
+
+  <section id="tabela">
+    <h2>Todas as datas</h2>
+    <div class="tablewrap">
+      <table>
+        <thead><tr><th>Ida</th><th>Volta</th><th class="r">Preço</th><th>Voo de ida</th><th>Situação</th><th>Visto em</th><th>Buscar</th></tr></thead>
+        <tbody id="tbody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <details>
+    <summary>Como este monitor funciona</summary>
+    <p>Todo dia às 9h15 um robô gratuito do GitHub consulta o Google Flights pela API do SerpApi e guarda o menor preço de ida e volta para cada data. O plano grátis permite 250 buscas por mês, então ele verifica 8 datas por dia em rodízio: cada data é atualizada a cada 3 dias. A coluna "Visto em" mostra quando cada preço foi lido.</p>
+    <p>As companhias vendem passagens só cerca de 330 dias antes do voo. Por isso as idas do fim de outubro aparecem como "Ainda não à venda" até essa janela chegar. Os preços são para 1 adulto, só com bagagem de mão. Quando o menor preço cai, o robô abre um aviso no GitHub, que chega por e-mail. O monitor para sozinho em 31/12/2026.</p>
+  </details>
+
+  <footer>Dados: Google Flights via SerpApi. Este site só mostra preços; para comprar, use o site da companhia.</footer>
+</main>
+
+<script>
+(() => {
+  const REF = 2471;
+  const brl = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
+  const DOW = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
+  const parts = (s) => s.split('-').map(Number);
+  const dow = (s) => { const [y, m, d] = parts(s); return new Date(Date.UTC(y, m - 1, d)).getUTCDay(); };
+  const dm = (s) => { const [, m, d] = parts(s); return String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0'); };
+  const dmy = (s) => { const [y, m, d] = parts(s); return String(d).padStart(2, '0') + '/' + String(m).padStart(2, '0') + '/' + y; };
+  const dia = (s) => DOW[dow(s)] + ', ' + dm(s);
+  const $ = (id) => document.getElementById(id);
+  const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; return e; };
+  const safeLink = (u) => typeof u === 'string' && u.startsWith('https://') ? u : null;
+
+  fetch('data/historico.json', { cache: 'no-store' })
+    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
+    .then(render)
+    .catch(() => { $('frase').textContent = 'Não foi possível carregar os preços. Recarregue a página em alguns minutos.'; $('frase').className = 'take err'; $('menor-datas').textContent = ''; });
+
+  function render(hist) {
+    // Última leitura de cada data de ida
+    const atualMap = new Map();
+    for (const r of hist) { const a = atualMap.get(r.ida); if (!a || r.checked_at >= a.checked_at) atualMap.set(r.ida, r); }
+    const atual = [...atualMap.values()].sort((a, b) => a.ida.localeCompare(b.ida));
+    const aVenda = atual.filter((r) => r.preco != null);
+    const menor = aVenda.length ? Math.min(...aVenda.map((r) => r.preco)) : null;
+    const melhores = aVenda.filter((r) => r.preco === menor);
+    const ultima = hist.reduce((m, r) => r.checked_at > m ? r.checked_at : m, '');
+
+    // Evolução: menor preço conhecido ao fim de cada dia de verificação
+    const dias = [...new Set(hist.map((r) => r.checked_at))].sort();
+    const serie = dias.map((d) => {
+      const m = new Map();
+      for (const r of hist) if (r.checked_at <= d) { const a = m.get(r.ida); if (!a || r.checked_at >= a.checked_at) m.set(r.ida, r); }
+      const v = [...m.values()].filter((r) => r.preco != null).map((r) => r.preco);
+      return { d, v: v.length ? Math.min(...v) : null };
+    }).filter((p) => p.v != null);
+
+    // Cartão
+    $('menor').textContent = menor != null ? brl(menor) : '—';
+    $('menor-datas').textContent = menor == null ? 'nenhuma data à venda ainda'
+      : melhores.length > 1 ? melhores.length + ' datas empatadas · primeira: ida ' + dia(melhores[0].ida)
+      : 'ida ' + dia(melhores[0].ida) + ' · volta ' + dia(melhores[0].volta);
+
+    // Frase
+    let f = '';
+    if (menor == null) f = 'Ainda não há datas de ida à venda.';
+    else {
+      f = 'A viagem mais barata custa ' + brl(menor) + ' ida e volta';
+      f += melhores.length > 1 ? ', e ' + melhores.length + ' datas de ida empatam nesse valor.' : ', com ida em ' + dia(melhores[0].ida) + '.';
+      if (menor < REF) f += ' São ' + brl(REF - menor) + ' a menos que o preço de referência.';
+      else if (menor === REF) f += ' É o mesmo valor do preço de referência.';
+      else f += ' Está ' + brl(menor - REF) + ' acima do preço de referência.';
+      if (serie.length > 1) {
+        const ant = serie[serie.length - 2].v;
+        if (menor < ant) f += ' Caiu ' + brl(ant - menor) + ' desde a verificação anterior.';
+        else if (menor > ant) f += ' Subiu ' + brl(menor - ant) + ' desde a verificação anterior.';
+      }
+    }
+    $('frase').textContent = f;
+
+    // Tiles
+    const vs = $('vs-ref');
+    if (menor == null) vs.textContent = '—';
+    else if (menor === REF) vs.textContent = 'Igual';
+    else { vs.textContent = (menor < REF ? '−' : '+') + brl(Math.abs(menor - REF)); vs.className = 'val num ' + (menor < REF ? 'good' : 'bad'); }
+    $('liberadas').textContent = aVenda.length + ' / 24';
+    $('ultima').textContent = ultima ? dmy(ultima) : '—';
+    const n = hist.filter((r) => r.checked_at === ultima).length;
+    $('ultima-nota').textContent = ultima ? n + (n === 1 ? ' data verificada nesse dia' : ' datas verificadas nesse dia') : '';
+
+    // Calendário (outubro de 2027 começa numa sexta)
+    const cal = $('cal');
+    DOW.forEach((d) => cal.append(el('div', { class: 'dow', role: 'columnheader' }, d)));
+    const offset = dow('2027-10-01');
+    for (let i = 0; i < offset; i++) cal.append(el('div', { class: 'day blank', 'aria-hidden': 'true' }));
+    for (let d = 1; d <= 31; d++) {
+      const ida = '2027-10-' + String(d).padStart(2, '0');
+      const r = atualMap.get(ida);
+      const link = r && safeLink(r.link);
+      let cls = 'day', preco = '', sub = '';
+      if (d > 24) { cls += ' none'; preco = ''; sub = 'só volta'; }
+      else if (!r) { cls += ' wait'; preco = '—'; sub = 'sem leitura'; }
+      else if (r.preco == null) { cls += ' wait'; preco = '—'; sub = r.status === 'erro' ? 'erro na busca' : 'não à venda'; }
+      else { preco = brl(r.preco); sub = 'volta ' + dm(r.volta); if (r.preco === menor) cls += ' best'; }
+      const cell = el(link && d <= 24 ? 'a' : 'div', { class: cls, role: 'gridcell' });
+      if (link && d <= 24) { cell.href = link; cell.target = '_blank'; cell.rel = 'noopener'; cell.setAttribute('aria-label', 'Ida ' + dia(ida) + ': ' + (r.preco != null ? brl(r.preco) : 'não à venda')); }
+      cell.append(el('span', { class: 'd' }, String(d)), el('span', { class: 'p' }, preco), el('span', { class: 's' }, sub));
+      cal.append(cell);
+    }
+
+    // Tabela
+    const tb = $('tbody');
+    for (const r of atual) {
+      const tr = el('tr');
+      tr.append(el('td', {}, dia(r.ida)), el('td', {}, dia(r.volta)), el('td', { class: 'r' }, r.preco != null ? brl(r.preco) : '—'));
+      tr.append(el('td', {}, [r.voos_ida, r.saida && r.chegada ? r.saida + '–' + r.chegada : ''].filter(Boolean).join(' · ') || r.companhia || '—'));
+      const st = el('td'); let pill;
+      if (r.preco == null) pill = el('span', { class: 'pill wait' }, r.status === 'erro' ? 'Erro na busca' : 'Ainda não à venda');
+      else if (r.preco === menor) pill = el('span', { class: 'pill best' }, 'Mais barata');
+      else pill = el('span', { class: 'pill ok' }, 'À venda');
+      st.append(pill); tr.append(st);
+      tr.append(el('td', {}, dm(r.checked_at)));
+      const lk = el('td'); const u = safeLink(r.link);
+      if (u) { const a = el('a', { href: u, target: '_blank', rel: 'noopener' }, 'Google Flights'); lk.append(a); } else lk.textContent = '—';
+      tr.append(lk); tb.append(tr);
+    }
+
+    drawChart(serie);
+    window.addEventListener('resize', () => drawChart(serie));
+  }
+
+  function drawChart(serie) {
+    const svg = $('svg'), box = $('chart');
+    svg.replaceChildren();
+    box.querySelectorAll('.tip').forEach((t) => t.remove());
+    if (!serie.length) return;
+    const NS = 'http://www.w3.org/2000/svg';
+    const W = Math.max(280, svg.clientWidth || 600), H = 220;
+    svg.setAttribute('viewBox', '0 0 ' + W + ' ' + H);
+    const mk = (tag, a) => { const e = document.createElementNS(NS, tag); for (const [k, v] of Object.entries(a)) e.setAttribute(k, v); svg.append(e); return e; };
+    const vals = serie.map((p) => p.v).concat(REF);
+    let lo = Math.min(...vals), hi = Math.max(...vals);
+    const pad = Math.max(150, (hi - lo) * 0.3); lo = Math.floor((lo - pad) / 100) * 100; hi = Math.ceil((hi + pad) / 100) * 100;
+    const ml = 64, mr = 18, mt = 12, mb = 26;
+    const y = (v) => mt + (hi - v) / (hi - lo) * (H - mt - mb);
+    const t = serie.map((p) => Date.parse(p.d + 'T12:00:00Z'));
+    let t0 = Math.min(...t), t1 = Math.max(...t); if (t0 === t1) { t0 -= 86400000; t1 += 86400000; }
+    const x = (ms) => ml + (ms - t0) / (t1 - t0) * (W - ml - mr);
+    const step = Math.max(100, Math.round((hi - lo) / 4 / 100) * 100);
+    for (let v = lo; v <= hi; v += step) {
+      mk('line', { x1: ml, x2: W - mr, y1: y(v), y2: y(v), stroke: 'var(--line)' });
+      const tx = mk('text', { x: ml - 8, y: y(v) + 4, 'text-anchor': 'end' }); tx.textContent = brl(v);
+    }
+    mk('line', { x1: ml, x2: W - mr, y1: y(REF), y2: y(REF), stroke: 'var(--muted)', 'stroke-dasharray': '5 4' });
+    const rl = mk('text', { x: W - mr, y: y(REF) - 6, 'text-anchor': 'end' }); rl.textContent = 'referência ' + brl(REF);
+    const nTicks = Math.min(6, serie.length);
+    for (let i = 0; i < nTicks; i++) {
+      const p = serie[Math.round(i * (serie.length - 1) / Math.max(1, nTicks - 1))];
+      const tx = mk('text', { x: x(Date.parse(p.d + 'T12:00:00Z')), y: H - 6, 'text-anchor': 'middle' }); tx.textContent = dm(p.d);
+    }
+    if (serie.length > 1) mk('path', { d: serie.map((p, i) => (i ? 'L' : 'M') + x(t[i]) + ',' + y(p.v)).join(''), fill: 'none', stroke: 'var(--glacier)', 'stroke-width': 2.5 });
+    serie.forEach((p, i) => mk('circle', { cx: x(t[i]), cy: y(p.v), r: i === serie.length - 1 ? 5 : 3, fill: 'var(--glacier)' }));
+    const tip = document.createElement('div'); tip.className = 'tip'; tip.hidden = true; box.append(tip);
+    svg.onpointermove = (ev) => {
+      const r = svg.getBoundingClientRect(); const px = (ev.clientX - r.left) / r.width * W;
+      let k = 0; t.forEach((ms, i) => { if (Math.abs(x(ms) - px) < Math.abs(x(t[k]) - px)) k = i; });
+      tip.hidden = false; tip.textContent = dmy(serie[k].d) + ': ' + brl(serie[k].v);
+      const left = x(t[k]) / W * r.width + 12 - tip.offsetWidth / 2;
+      tip.style.left = Math.max(4, Math.min(box.clientWidth - tip.offsetWidth - 4, left)) + 'px'; tip.style.top = '8px';
+    };
+    svg.onpointerleave = () => { tip.hidden = true; };
+  }
+})();
+</script>
+</body>
+</html>
