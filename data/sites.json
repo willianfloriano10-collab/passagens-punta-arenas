@@ -1,1 +1,16 @@
-[]
+[
+ {
+  "checked_at": "2026-11-23",
+  "ida": "2027-10-01",
+  "volta": "2027-10-08",
+  "voos_ida": "LA741 + LA85",
+  "voos_volta": "LA82 + LA742",
+  "opcoes": [
+   {
+    "site": "LATAM",
+    "preco": 2471,
+    "separado": false
+   }
+  ]
+ }
+]
