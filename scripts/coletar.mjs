@@ -1,61 +1,94 @@
 // Coletor diário de preços FLN ⇄ PUQ (outubro/2027) usando a API gratuita do SerpApi (Google Flights).
-// Roda no GitHub Actions (Node 20+). Precisa do segredo SERPAPI_KEY.
+// Roda no GitHub Actions (Node 20+). Segredos: SERPAPI_KEY e, opcional, WHATSAPP_DESTINOS.
 import { readFile, writeFile } from 'node:fs/promises';
 
 const ARQ = new URL('../data/historico.json', import.meta.url);
-const ALERTA = new URL('../data/alerta.txt', import.meta.url);
+const ARQ_SITES = new URL('../data/sites.json', import.meta.url);
 
 const ORIGEM = 'FLN';
 const DESTINO = 'PUQ';
-const DIAS_VIAGEM = 7;            // volta 7 dias depois da ida
-const PRIMEIRA_IDA = 1;           // 01/10/2027
-const ULTIMA_IDA = 24;            // 24/10/2027 (volta 31/10)
-const GRUPOS = 3;                 // a cada dia busca 1/3 das datas -> cada data a cada 3 dias
-const LIMITE_MES = 240;           // plano grátis do SerpApi: 250 buscas/mês (deixa folga)
-const FIM_MONITOR = '2026-12-31'; // depois desse dia o coletor não busca mais nada
+const DIAS_VIAGEM = 7;             // volta 7 dias depois da ida
+const JANELA_VENDA = 330;          // as companhias vendem até ~330 dias antes da volta
+const FIM_MONITOR = '2026-12-31';  // depois desse dia o robô não faz mais nada
 const REFERENCIA = 2471;
+const MAX_POR_DIA = 30;            // teto de buscas de datas por execução
+// Tempo de viagem parecido com os voos de referência (ida LA743+LA81: 13h52, volta LA82+LA742: 8h27, 1 parada)
+const MAX_PARADAS = 1;
+const MAX_MIN_IDA = 16 * 60;
+const MAX_MIN_VOLTA = 12 * 60;
+const tempoOk = (o, maxMin) => (o.layovers || []).length <= MAX_PARADAS && (!o.total_duration || o.total_duration <= maxMin);
+const SITE_URL = process.env.SITE_URL || '';
 
 const key = process.env.SERPAPI_KEY;
 if (!key) { console.error('Falta o segredo SERPAPI_KEY.'); process.exit(1); }
 
-// Data de hoje no horário de Brasília (AAAA-MM-DD)
 const hoje = new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Sao_Paulo' }).format(new Date());
-if (hoje > FIM_MONITOR) { console.log(`Monitor encerrado em ${FIM_MONITOR}. Nada a fazer.`); process.exit(0); }
+if (hoje > FIM_MONITOR) { console.log(`Monitor encerrado em ${FIM_MONITOR}.`); process.exit(0); }
 
 const pad = (n) => String(n).padStart(2, '0');
 const addDias = (iso, n) => { const d = new Date(iso + 'T12:00:00Z'); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
+const difDias = (a, b) => Math.round((Date.parse(b + 'T12:00:00Z') - Date.parse(a + 'T12:00:00Z')) / 86400000);
+const dm = (s) => s.slice(8, 10) + '/' + s.slice(5, 7);
+const fmt = (v) => 'R$ ' + Math.round(v).toLocaleString('pt-BR');
 const linkGoogle = (ida, volta) => `https://www.google.com/travel/flights?q=Flights%20to%20${DESTINO}%20from%20${ORIGEM}%20on%20${ida}%20through%20${volta}&hl=pt-BR&curr=BRL`;
+const segundaQuinzena = (ida) => Number(ida.slice(8, 10)) >= 16;
 
-let hist = [];
-try { hist = JSON.parse((await readFile(ARQ, 'utf8')).replace(/^\uFEFF/, '')); } catch { hist = []; }
-
-// Quantas buscas pagas já foram feitas neste mês
-const mes = hoje.slice(0, 7);
-const usadasNoMes = hist.filter((r) => r.checked_at?.startsWith(mes) && r.fonte === 'serpapi' && r.contou).length;
-
-// Escolhe as datas de hoje (rodízio)
-const diaNum = Math.floor(Date.parse(hoje + 'T12:00:00Z') / 86400000);
-const grupo = diaNum % GRUPOS;
-const forcar = process.env.TODAS_AS_DATAS === 'true';
-const idas = [];
-for (let d = PRIMEIRA_IDA; d <= ULTIMA_IDA; d++) {
-  if (forcar || (d - PRIMEIRA_IDA) % GRUPOS === grupo) idas.push(`2027-10-${pad(d)}`);
+async function lerJson(url, padrao) {
+  try { return JSON.parse((await readFile(url, 'utf8')).replace(/^\uFEFF/, '')); } catch { return padrao; }
+}
+async function serp(params) {
+  const url = new URL('https://serpapi.com/search.json');
+  Object.entries({ engine: 'google_flights', currency: 'BRL', hl: 'pt', gl: 'br', api_key: key, ...params })
+    .forEach(([k, v]) => url.searchParams.set(k, v));
+  const r = await fetch(url);
+  return r.json();
 }
 
-const restantes = LIMITE_MES - usadasNoMes;
-if (restantes <= 0) { console.log(`Limite do mês atingido (${usadasNoMes} buscas). Nada a fazer hoje.`); process.exit(0); }
-const lote = idas.slice(0, restantes);
-console.log(`Hoje ${hoje}: buscando ${lote.length} datas (já usadas no mês: ${usadasNoMes}).`);
+let hist = await lerJson(ARQ, []);
+let sites = await lerJson(ARQ_SITES, []);
 
+// ---------- 1. Orçamento: quantas buscas ainda restam no mês (consulta grátis) ----------
+let restantesMes = 0;
+try {
+  const conta = await (await fetch('https://serpapi.com/account.json?api_key=' + encodeURIComponent(key))).json();
+  restantesMes = Number(conta.plan_searches_left ?? conta.total_searches_left ?? 0);
+} catch { restantesMes = 0; }
+const [ano, mes] = hoje.split('-').map(Number);
+const ultimoDiaMes = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+const diasRestantes = ultimoDiaMes - Number(hoje.slice(8, 10)) + 1;
+const forcar = process.env.TODAS_AS_DATAS === 'true';
+let orcamento = Math.max(0, Math.floor((restantesMes - 5) / diasRestantes)); // guarda 5 de folga
+if (forcar) orcamento = Math.max(0, restantesMes - 5);
+console.log(`Hoje ${hoje}: ${restantesMes} buscas restantes no mês, orçamento de hoje: ${orcamento}.`);
+
+// ---------- 2. Escolher as datas (prioridade para a 2ª quinzena) ----------
+const ultimaLeitura = new Map();
+for (const r of hist) { const a = ultimaLeitura.get(r.ida); if (!a || r.checked_at >= a.checked_at) ultimaLeitura.set(r.ida, r); }
+
+const candidatas = [];
+for (let d = 1; d <= 31; d++) {
+  const ida = `2027-10-${pad(d)}`;
+  const volta = addDias(ida, DIAS_VIAGEM);
+  if (difDias(hoje, volta) > JANELA_VENDA) continue;           // ainda não está à venda: não gasta busca
+  const ult = ultimaLeitura.get(ida);
+  const idade = ult && ult.preco != null ? difDias(ult.checked_at, hoje) : 99;
+  if (ult && ult.checked_at === hoje && ult.preco != null && !forcar) continue;
+  const peso = segundaQuinzena(ida) ? 3 : 1;
+  candidatas.push({ ida, volta, nota: (idade + 1) * peso });
+}
+candidatas.sort((a, b) => b.nota - a.nota || a.ida.localeCompare(b.ida));
+const reservaSites = orcamento >= 4 ? 2 : 0;                    // 2 buscas para o ranking de sites
+const lote = forcar ? candidatas : candidatas.slice(0, Math.min(MAX_POR_DIA, Math.max(0, orcamento - reservaSites)));
+console.log(`Buscando ${lote.length} datas: ${lote.map((c) => dm(c.ida)).join(', ') || 'nenhuma'}.`);
+
+// ---------- 3. Buscar preços ----------
 function resumoVoo(op) {
   const voos = op.flights || [];
-  const numeros = voos.map((f) => (f.flight_number || '').replace(/\s+/g, '')).filter(Boolean);
-  const cias = [...new Set(voos.map((f) => f.airline).filter(Boolean))];
   const escalas = (op.layovers || []).map((l) => l.id).filter(Boolean);
   const h = Math.floor((op.total_duration || 0) / 60), m = (op.total_duration || 0) % 60;
   return {
-    companhia: cias.join(' + '),
-    voos_ida: numeros.join(' + '),
+    companhia: [...new Set(voos.map((f) => f.airline).filter(Boolean))].join(' + '),
+    voos: voos.map((f) => (f.flight_number || '').replace(/\s+/g, '')).filter(Boolean).join(' + '),
     obs: `${escalas.length === 0 ? 'Sem escalas' : escalas.length + (escalas.length === 1 ? ' parada' : ' paradas') + ' em ' + escalas.join(', ')}${op.total_duration ? `, ${h}h ${pad(m)}min` : ''}`,
     saida: voos[0]?.departure_airport?.time?.slice(11) || '',
     chegada: voos[voos.length - 1]?.arrival_airport?.time?.slice(11) || ''
@@ -63,36 +96,27 @@ function resumoVoo(op) {
 }
 
 const novas = [];
-for (const ida of lote) {
-  const volta = addDias(ida, DIAS_VIAGEM);
-  const url = new URL('https://serpapi.com/search.json');
-  Object.entries({
-    engine: 'google_flights', departure_id: ORIGEM, arrival_id: DESTINO,
-    outbound_date: ida, return_date: volta, type: '1', adults: '1', travel_class: '1',
-    currency: 'BRL', hl: 'pt', gl: 'br', api_key: key
-  }).forEach(([k, v]) => url.searchParams.set(k, v));
-
-  const base = { checked_at: hoje, ida, volta, preco: null, status: 'erro', companhia: '', voos_ida: '', obs: '', saida: '', chegada: '', link: linkGoogle(ida, volta), fonte: 'serpapi', contou: false };
+const tokens = new Map();
+for (const { ida, volta } of lote) {
+  const base = { checked_at: hoje, ida, volta, preco: null, status: 'erro', companhia: '', voos_ida: '', obs: '', saida: '', chegada: '', link: linkGoogle(ida, volta), fonte: 'serpapi' };
   try {
-    const resp = await fetch(url);
-    const j = await resp.json();
-    const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number');
+    const j = await serp({ departure_id: ORIGEM, arrival_id: DESTINO, outbound_date: ida, return_date: volta, type: '1', adults: '1', travel_class: '1', stops: String(MAX_PARADAS + 1), max_duration: String(MAX_MIN_IDA) });
+    const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number' && tempoOk(o, MAX_MIN_IDA)).sort((a, b) => a.price - b.price);
     if (ops.length) {
-      ops.sort((a, b) => a.price - b.price);
-      novas.push({ ...base, ...resumoVoo(ops[0]), preco: ops[0].price, status: 'disponivel', contou: true,
-        faixa_tipica: j.price_insights?.typical_price_range || null });
+      const r = resumoVoo(ops[0]);
+      novas.push({ ...base, companhia: r.companhia, voos_ida: r.voos, obs: r.obs, saida: r.saida, chegada: r.chegada, preco: ops[0].price, status: 'disponivel', faixa_tipica: j.price_insights?.typical_price_range || null });
+      if (ops[0].departure_token) tokens.set(ida, ops[0].departure_token);
     } else {
       const msg = String(j.error || 'Sem resultados');
-      // O SerpApi não cobra buscas sem resultado; datas muito distantes ainda não estão à venda
       novas.push({ ...base, status: /result/i.test(msg) ? 'nao_liberado' : 'erro', obs: msg.slice(0, 120) });
     }
   } catch (e) {
     novas.push({ ...base, obs: 'Falha de rede: ' + String(e.message || e).slice(0, 100) });
   }
-  console.log(`${ida} → ${volta}: ${novas[novas.length - 1].preco ?? novas[novas.length - 1].status}`);
+  const u = novas[novas.length - 1];
+  console.log(`${ida} → ${volta}: ${u.preco ?? u.status}`);
 }
 
-// Menor preço "atual" antes e depois (última leitura conhecida de cada data)
 function atual(rows) {
   const m = new Map();
   for (const r of rows) { const a = m.get(r.ida); if (!a || r.checked_at >= a.checked_at) m.set(r.ida, r); }
@@ -104,18 +128,80 @@ const antes = minDe(atual(hist));
 hist = hist.filter((r) => !(r.checked_at === hoje && novas.some((n) => n.ida === r.ida)));
 hist.push(...novas);
 hist.sort((a, b) => a.checked_at.localeCompare(b.checked_at) || a.ida.localeCompare(b.ida));
-await writeFile(ARQ, JSON.stringify(hist, null, 1) + '\n', 'utf8');
 
-const depois = minDe(atual(hist));
-const fmt = (v) => 'R$ ' + v.toLocaleString('pt-BR');
-const baratas = novas.filter((r) => r.preco != null && r.preco < REFERENCIA).sort((a, b) => a.preco - b.preco);
-let alerta = '';
-if (depois != null && antes != null && depois < antes) {
-  const r = atual(hist).filter((x) => x.preco === depois)[0];
-  alerta = `Passagem Punta Arenas caiu para ${fmt(depois)} (ida ${r.ida.split('-').reverse().join('/')}, volta ${r.volta.split('-').reverse().join('/')}). Antes: ${fmt(antes)}.`;
-} else if (baratas.length) {
-  const r = baratas[0];
-  alerta = `Passagem Punta Arenas abaixo de ${fmt(REFERENCIA)}: ${fmt(r.preco)} (ida ${r.ida.split('-').reverse().join('/')}).`;
+// ---------- 4. Ranking de sites para a data mais barata (2 buscas) ----------
+const agora = atual(hist).filter((r) => r.preco != null).sort((a, b) => a.preco - b.preco || (segundaQuinzena(b.ida) - segundaQuinzena(a.ida)) || a.ida.localeCompare(b.ida));
+const melhor = agora[0];
+let rankingSites = null;
+if (melhor && reservaSites && tokens.has(melhor.ida)) {
+  try {
+    const volta = await serp({ departure_id: ORIGEM, arrival_id: DESTINO, outbound_date: melhor.ida, return_date: melhor.volta, type: '1', departure_token: tokens.get(melhor.ida) });
+    const todasVoltas = [...(volta.best_flights || []), ...(volta.other_flights || [])].filter((o) => o.booking_token).sort((a, b) => (a.price ?? 1e9) - (b.price ?? 1e9));
+    const voltasOk = todasVoltas.filter((o) => tempoOk(o, MAX_MIN_VOLTA));
+    const voltas = voltasOk.length ? voltasOk : todasVoltas;
+    if (voltas.length) {
+      const rv = resumoVoo(voltas[0]);
+      const idx = hist.findIndex((r) => r.checked_at === melhor.checked_at && r.ida === melhor.ida);
+      if (idx >= 0) Object.assign(hist[idx], { voos_volta: rv.voos, volta_saida: rv.saida, volta_chegada: rv.chegada });
+      const b = await serp({ departure_id: ORIGEM, arrival_id: DESTINO, outbound_date: melhor.ida, return_date: melhor.volta, type: '1', booking_token: voltas[0].booking_token });
+      const opcoes = [];
+      for (const o of b.booking_options || []) {
+        if (o.together && typeof o.together.price === 'number') opcoes.push({ site: o.together.book_with || '?', preco: o.together.price, separado: false });
+        else if (o.departing && o.returning && typeof o.departing.price === 'number' && typeof o.returning.price === 'number')
+          opcoes.push({ site: `${o.departing.book_with} + ${o.returning.book_with}`, preco: o.departing.price + o.returning.price, separado: true });
+      }
+      opcoes.sort((a, c) => a.preco - c.preco);
+      if (opcoes.length) {
+        rankingSites = { checked_at: hoje, ida: melhor.ida, volta: melhor.volta, voos_ida: melhor.voos_ida, voos_volta: rv.voos, opcoes };
+        sites = sites.filter((s) => s.checked_at !== hoje);
+        sites.push(rankingSites);
+        sites = sites.slice(-60);
+      }
+    }
+  } catch (e) { console.log('Ranking de sites falhou: ' + String(e.message || e)); }
 }
-await writeFile(ALERTA, alerta, 'utf8');
-console.log(alerta || 'Nenhuma queda de preço hoje.');
+
+await writeFile(ARQ, JSON.stringify(hist, null, 1) + '\n', 'utf8');
+await writeFile(ARQ_SITES, JSON.stringify(sites, null, 1) + '\n', 'utf8');
+
+// ---------- 5. Resumo diário no WhatsApp ----------
+const depois = minDe(atual(hist));
+const ultSites = rankingSites || sites[sites.length - 1] || null;
+const linhas = [];
+linhas.push(`✈️ *Floripa → Punta Arenas* (ida e volta, 7 dias)`);
+linhas.push(`Resumo de ${dm(hoje)}/${hoje.slice(0, 4)}`);
+if (depois == null) linhas.push('Ainda não há datas à venda.');
+else {
+  let var_ = '';
+  if (antes != null && depois < antes) var_ = ` 🔻 caiu ${fmt(antes - depois)}`;
+  else if (antes != null && depois > antes) var_ = ` 🔺 subiu ${fmt(depois - antes)}`;
+  else if (antes != null) var_ = ' (igual a ontem)';
+  linhas.push(`Menor preço: *${fmt(depois)}*${var_}`);
+  linhas.push('');
+  linhas.push('🏆 *Ranking de datas*');
+  agora.slice(0, 5).forEach((r, i) => linhas.push(`${i + 1}. ida ${dm(r.ida)} → volta ${dm(r.volta)}: ${fmt(r.preco)}${segundaQuinzena(r.ida) ? ' ⭐' : ''}`));
+  const q2 = agora.filter((r) => segundaQuinzena(r.ida));
+  if (!q2.length) linhas.push('⭐ 2ª quinzena: ainda não está à venda.');
+  else if (!agora.slice(0, 5).some((r) => segundaQuinzena(r.ida))) linhas.push(`⭐ Melhor da 2ª quinzena: ida ${dm(q2[0].ida)} por ${fmt(q2[0].preco)}`);
+  if (ultSites && ultSites.opcoes?.length) {
+    linhas.push('');
+    linhas.push(`🛒 *Onde comprar* (ida ${dm(ultSites.ida)})`);
+    ultSites.opcoes.slice(0, 5).forEach((o, i) => linhas.push(`${i + 1}. ${o.site}: ${fmt(o.preco)}`));
+  }
+}
+if (SITE_URL) { linhas.push(''); linhas.push(SITE_URL); }
+const mensagem = linhas.join('\n');
+console.log('\n' + mensagem);
+
+const destinos = String(process.env.WHATSAPP_DESTINOS || '').split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
+for (const d of destinos) {
+  const [phone, apikey] = d.split(':').map((s) => s.trim());
+  if (!phone || !apikey) continue;
+  try {
+    const u = 'https://api.callmebot.com/whatsapp.php?phone=' + encodeURIComponent(phone) + '&text=' + encodeURIComponent(mensagem) + '&apikey=' + encodeURIComponent(apikey);
+    const r = await fetch(u);
+    console.log(`WhatsApp para ...${phone.slice(-4)}: HTTP ${r.status}`);
+  } catch (e) { console.log(`WhatsApp para ...${phone.slice(-4)} falhou: ${e.message}`); }
+  await new Promise((res) => setTimeout(res, 3000));
+}
+if (!destinos.length) console.log('Sem WHATSAPP_DESTINOS: nenhuma mensagem enviada.');
