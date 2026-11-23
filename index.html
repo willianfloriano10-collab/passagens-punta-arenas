@@ -44,7 +44,7 @@
   .num { font-variant-numeric: tabular-nums; }
 
   /* Cartão de embarque */
-  .pass { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: grid; grid-template-columns: 1fr auto; overflow: hidden; }
+  .pass { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; display: grid; grid-template-columns: 1fr minmax(200px, 290px); overflow: hidden; }
   .pass-main { padding: 22px 24px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
   .route { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
   .iata { font-family: var(--mono); font-size: clamp(2rem, 7vw, 3.2rem); line-height: 1; letter-spacing: .02em; }
@@ -82,6 +82,23 @@
   .day.wait { background: var(--off); }
   .day.none { background: transparent; border-style: dashed; }
   .day.blank { visibility: hidden; }
+  .day.foco { box-shadow: inset 0 3px 0 var(--glacier); }
+  .day .star { color: var(--glacier); font-size: .7rem; }
+
+  /* Rankings */
+  .ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; align-items: start; }
+  .rank { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .rank h3 { font-family: var(--display); font-weight: 500; font-size: 1.05rem; margin: 0; }
+  .rank ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+  .rank li { display: grid; grid-template-columns: 26px 1fr auto; gap: 8px; align-items: baseline; padding: 7px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+  .rank li:last-child { border-bottom: 0; }
+  .rank .pos { font-family: var(--mono); color: var(--muted); font-size: .8rem; }
+  .rank li:first-child .pos { color: var(--best); font-weight: 600; }
+  .rank li:first-child .pr { color: var(--best); }
+  .rank .pr { font-weight: 600; white-space: nowrap; }
+  .rank .what { min-width: 0; overflow-wrap: anywhere; }
+  .rank .what small { display: block; color: var(--muted); font-size: .75rem; }
+  .tag { display: inline-block; font-size: .68rem; padding: 0 6px; border-radius: 999px; background: var(--glacier-soft); color: var(--glacier); margin-left: 6px; vertical-align: 1px; }
   @media (max-width: 520px) { .day { min-height: 60px; padding: 5px; } .day .p { font-size: .76rem; } .day .s { display: none; } }
   .legend { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--muted); }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 6px; vertical-align: -2px; border: 1px solid var(--line); }
@@ -123,8 +140,9 @@
       <h1>Floripa → Punta Arenas</h1>
       <div class="meta">
         <div><b>Viagem</b>Ida e volta · 7 dias</div>
-        <div><b>Idas</b>1 a 24 de outubro de 2027</div>
+        <div><b>Idas</b>outubro de 2027 · foco de 16 a 31</div>
         <div><b>Passageiros</b>1 adulto · econômica</div>
+        <div><b>Voos</b>até 1 parada · ida até 16h · volta até 12h</div>
         <div><b>Referência</b>R$ 2.471 (LATAM, 23/11/2026)</div>
       </div>
     </div>
@@ -139,9 +157,24 @@
 
   <div class="tiles">
     <div class="tile"><span class="lbl">Contra a referência</span><span class="val num" id="vs-ref">—</span><span class="muted" style="font-size:.82rem">R$ 2.471 encontrado em 23/11</span></div>
-    <div class="tile"><span class="lbl">Datas de ida à venda</span><span class="val num" id="liberadas">—</span><span class="muted" style="font-size:.82rem">de 24 possíveis</span></div>
+    <div class="tile"><span class="lbl">Datas de ida à venda</span><span class="val num" id="liberadas">—</span><span class="muted" style="font-size:.82rem" id="liberadas-nota">de 31 possíveis</span></div>
     <div class="tile"><span class="lbl">Última verificação</span><span class="val num" id="ultima">—</span><span class="muted" style="font-size:.82rem" id="ultima-nota">&nbsp;</span></div>
   </div>
+
+  <section id="ranking">
+    <h2>Ranking</h2>
+    <div class="ranks">
+      <div class="rank">
+        <h3>Datas mais baratas</h3>
+        <ol id="rank-datas"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+      </div>
+      <div class="rank">
+        <h3>Onde comprar</h3>
+        <span class="muted" style="font-size:.82rem" id="rank-sites-nota">Preço total por site para a data mais barata</span>
+        <ol id="rank-sites"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+      </div>
+    </div>
+  </section>
 
   <section id="calendario">
     <div class="sec-head">
@@ -152,7 +185,7 @@
       <span><i style="background:var(--best-soft);border-color:var(--best)"></i>Mais barato</span>
       <span><i style="background:var(--panel)"></i>À venda</span>
       <span><i style="background:var(--off)"></i>Ainda não à venda</span>
-      <span><i style="background:transparent;border-style:dashed"></i>Só volta (sem ida monitorada)</span>
+      <span><i style="box-shadow:inset 0 3px 0 var(--glacier)"></i>2ª quinzena (foco)</span>
     </div>
     <div class="cal" id="cal" role="grid" aria-label="Calendário de outubro de 2027 com preços"></div>
   </section>
@@ -174,8 +207,10 @@
 
   <details>
     <summary>Como este monitor funciona</summary>
-    <p>Todo dia às 9h15 um robô gratuito do GitHub consulta o Google Flights pela API do SerpApi e guarda o menor preço de ida e volta para cada data. O plano grátis permite 250 buscas por mês, então ele verifica 8 datas por dia em rodízio: cada data é atualizada a cada 3 dias. A coluna "Visto em" mostra quando cada preço foi lido.</p>
-    <p>As companhias vendem passagens só cerca de 330 dias antes do voo. Por isso as idas do fim de outubro aparecem como "Ainda não à venda" até essa janela chegar. Os preços são para 1 adulto, só com bagagem de mão. Quando o menor preço cai, o robô abre um aviso no GitHub, que chega por e-mail. O monitor para sozinho em 31/12/2026.</p>
+    <p>Todo dia às 9h15 um robô gratuito do GitHub consulta o Google Flights pela API do SerpApi e guarda o menor preço de ida e volta (7 dias) para cada data de ida em outubro. O plano grátis permite 250 buscas por mês, então o robô divide as buscas pelos dias que faltam e prioriza as idas de 16 a 31 de outubro, que são verificadas cerca de três vezes mais que as da 1ª quinzena. A coluna "Visto em" mostra quando cada preço foi lido.</p>
+    <p>Só entram voos com tempo de viagem parecido com os da referência (ida LA743 + LA81 em 13h52, volta LA82 + LA742 em 8h27): no máximo 1 parada, até 16 horas na ida e até 12 horas na volta. Opções mais longas, como as de 2 paradas por São Paulo, ficam de fora mesmo quando são mais baratas.</p>
+    <p>Para a data mais barata, ele também consulta quanto cada site cobra (companhia aérea e agências) e monta o ranking "Onde comprar". Depois manda um resumo no WhatsApp.</p>
+    <p>As companhias vendem passagens só cerca de 330 dias antes da volta. Por isso as idas do fim de outubro aparecem como "Ainda não à venda" até essa janela chegar; a última (ida 31/10, volta 07/11) abre por volta de 12/12/2026. Os preços são para 1 adulto, só com bagagem de mão. O monitor para sozinho em 31/12/2026.</p>
   </details>
 
   <footer>Dados: Google Flights via SerpApi. Este site só mostra preços; para comprar, use o site da companhia.</footer>
@@ -195,9 +230,12 @@
   const el = (tag, attrs = {}, text) => { const e = document.createElement(tag); for (const [k, v] of Object.entries(attrs)) e.setAttribute(k, v); if (text != null) e.textContent = text; return e; };
   const safeLink = (u) => typeof u === 'string' && u.startsWith('https://') ? u : null;
 
-  fetch('data/historico.json', { cache: 'no-store' })
-    .then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); })
-    .then(render)
+  const foco = (s) => Number(s.slice(8, 10)) >= 16;
+  Promise.all([
+    fetch('data/historico.json', { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+    fetch('data/sites.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).catch(() => [])
+  ])
+    .then(([hist, sites]) => { render(hist); renderSites(Array.isArray(sites) ? sites : []); })
     .catch(() => { $('frase').textContent = 'Não foi possível carregar os preços. Recarregue a página em alguns minutos.'; $('frase').className = 'take err'; $('menor-datas').textContent = ''; });
 
   function render(hist) {
@@ -247,7 +285,29 @@
     if (menor == null) vs.textContent = '—';
     else if (menor === REF) vs.textContent = 'Igual';
     else { vs.textContent = (menor < REF ? '−' : '+') + brl(Math.abs(menor - REF)); vs.className = 'val num ' + (menor < REF ? 'good' : 'bad'); }
-    $('liberadas').textContent = aVenda.length + ' / 24';
+    $('liberadas').textContent = aVenda.length + ' / 31';
+    const focoVenda = aVenda.filter((r) => foco(r.ida)).length;
+    $('liberadas-nota').textContent = focoVenda + ' delas na 2ª quinzena (de 16 possíveis)';
+
+    // Ranking de datas
+    const rd = $('rank-datas');
+    rd.replaceChildren();
+    const ord = aVenda.slice().sort((a, b) => a.preco - b.preco || (foco(b.ida) - foco(a.ida)) || a.ida.localeCompare(b.ida));
+    ord.slice(0, 10).forEach((r, i) => {
+      const li = el('li');
+      const what = el('span', { class: 'what' }, 'Ida ' + dia(r.ida) + ' → ' + dia(r.volta));
+      if (foco(r.ida)) what.append(el('span', { class: 'tag' }, '2ª quinzena'));
+      what.append(el('small', {}, [r.companhia, r.voos_ida].filter(Boolean).join(' · ') + ' · visto em ' + dm(r.checked_at)));
+      li.append(el('span', { class: 'pos' }, String(i + 1) + 'º'), what, el('span', { class: 'pr' }, brl(r.preco)));
+      rd.append(li);
+    });
+    if (!ord.length) { rd.replaceChildren(); const li = el('li'); li.append(el('span', { class: 'pos' }, '—'), el('span', { class: 'what' }, 'Nenhuma data à venda ainda.'), el('span')); rd.append(li); }
+    else if (!ord.slice(0, 10).some((r) => foco(r.ida))) {
+      const q2 = ord.filter((r) => foco(r.ida));
+      const li = el('li');
+      li.append(el('span', { class: 'pos' }, '⭐'), el('span', { class: 'what' }, q2.length ? 'Melhor da 2ª quinzena: ida ' + dia(q2[0].ida) : '2ª quinzena: ainda não está à venda'), el('span', { class: 'pr' }, q2.length ? brl(q2[0].preco) : ''));
+      rd.append(li);
+    }
     $('ultima').textContent = ultima ? dmy(ultima) : '—';
     const n = hist.filter((r) => r.checked_at === ultima).length;
     $('ultima-nota').textContent = ultima ? n + (n === 1 ? ' data verificada nesse dia' : ' datas verificadas nesse dia') : '';
@@ -261,13 +321,12 @@
       const ida = '2027-10-' + String(d).padStart(2, '0');
       const r = atualMap.get(ida);
       const link = r && safeLink(r.link);
-      let cls = 'day', preco = '', sub = '';
-      if (d > 24) { cls += ' none'; preco = ''; sub = 'só volta'; }
-      else if (!r) { cls += ' wait'; preco = '—'; sub = 'sem leitura'; }
+      let cls = foco(ida) ? 'day foco' : 'day', preco = '', sub = '';
+      if (!r) { cls += ' wait'; preco = '—'; sub = 'não à venda'; }
       else if (r.preco == null) { cls += ' wait'; preco = '—'; sub = r.status === 'erro' ? 'erro na busca' : 'não à venda'; }
       else { preco = brl(r.preco); sub = 'volta ' + dm(r.volta); if (r.preco === menor) cls += ' best'; }
-      const cell = el(link && d <= 24 ? 'a' : 'div', { class: cls, role: 'gridcell' });
-      if (link && d <= 24) { cell.href = link; cell.target = '_blank'; cell.rel = 'noopener'; cell.setAttribute('aria-label', 'Ida ' + dia(ida) + ': ' + (r.preco != null ? brl(r.preco) : 'não à venda')); }
+      const cell = el(link ? 'a' : 'div', { class: cls, role: 'gridcell' });
+      if (link) { cell.href = link; cell.target = '_blank'; cell.rel = 'noopener'; cell.setAttribute('aria-label', 'Ida ' + dia(ida) + ': ' + (r.preco != null ? brl(r.preco) : 'não à venda')); }
       cell.append(el('span', { class: 'd' }, String(d)), el('span', { class: 'p' }, preco), el('span', { class: 's' }, sub));
       cal.append(cell);
     }
@@ -291,6 +350,24 @@
 
     drawChart(serie);
     window.addEventListener('resize', () => drawChart(serie));
+  }
+
+  function renderSites(sites) {
+    const rs = $('rank-sites');
+    rs.replaceChildren();
+    const s = sites.length ? sites[sites.length - 1] : null;
+    if (!s || !Array.isArray(s.opcoes) || !s.opcoes.length) {
+      const li = el('li'); li.append(el('span', { class: 'pos' }, '—'), el('span', { class: 'what' }, 'Aparece depois da próxima verificação do robô.'), el('span')); rs.append(li);
+      return;
+    }
+    $('rank-sites-nota').textContent = 'Ida ' + dia(s.ida) + ' → volta ' + dia(s.volta) + ' · consultado em ' + dm(s.checked_at) + (s.voos_ida ? ' · voos ' + s.voos_ida + (s.voos_volta ? ' / ' + s.voos_volta : '') : '');
+    s.opcoes.slice(0, 10).forEach((o, i) => {
+      const li = el('li');
+      const what = el('span', { class: 'what' }, o.site);
+      if (o.separado) what.append(el('small', {}, 'ida e volta compradas separadas'));
+      li.append(el('span', { class: 'pos' }, String(i + 1) + 'º'), what, el('span', { class: 'pr' }, brl(o.preco)));
+      rs.append(li);
+    });
   }
 
   function drawChart(serie) {
