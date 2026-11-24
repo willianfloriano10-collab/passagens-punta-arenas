@@ -176,6 +176,27 @@
     </div>
   </section>
 
+  <section id="extras">
+    <div class="ranks">
+      <div class="rank">
+        <h3>Sua viagem: 09/10 → 17/10</h3>
+        <span class="muted" style="font-size:.82rem">Datas fixas, verificadas todo dia</span>
+        <ol id="fixa"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+      </div>
+      <div class="rank">
+        <h3>Pagamento</h3>
+        <span class="muted" style="font-size:.82rem" id="pg-nota">Para o menor preço do momento</span>
+        <ol id="pagamento"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+        <span class="muted" style="font-size:.75rem">A LATAM costuma parcelar em até 4x sem juros; 10x sem juros só em promoções. Parcelas acima disso podem ter juros, conforme o cartão.</span>
+      </div>
+    </div>
+    <div class="rank">
+      <h3>Promoções (LATAM, Chile e seus cartões)</h3>
+      <span class="muted" style="font-size:.82rem">PicPay, Mercado Pago, Sicoob, Nubank e Santander/Esfera · fontes: Passageiro de Primeira e Melhores Destinos</span>
+      <ol id="promos"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+    </div>
+  </section>
+
   <section id="calendario">
     <div class="sec-head">
       <h2>Outubro de 2027: preço por dia de ida</h2>
@@ -233,9 +254,15 @@
   const foco = (s) => Number(s.slice(8, 10)) >= 16;
   Promise.all([
     fetch('data/historico.json', { cache: 'no-store' }).then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
-    fetch('data/sites.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).catch(() => [])
+    fetch('data/sites.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+    fetch('data/fixas.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).catch(() => []),
+    fetch('data/promos.json', { cache: 'no-store' }).then((r) => r.ok ? r.json() : []).catch(() => [])
   ])
-    .then(([hist, sites]) => { render(hist); renderSites(Array.isArray(sites) ? sites : []); })
+    .then(([hist, sites, fixas, promos]) => {
+      render(hist);
+      renderSites(Array.isArray(sites) ? sites : []);
+      renderExtras(hist, Array.isArray(fixas) ? fixas : [], Array.isArray(promos) ? promos : []);
+    })
     .catch(() => { $('frase').textContent = 'Não foi possível carregar os preços. Recarregue a página em alguns minutos.'; $('frase').className = 'take err'; $('menor-datas').textContent = ''; });
 
   function render(hist) {
@@ -367,6 +394,65 @@
       if (o.separado) what.append(el('small', {}, 'ida e volta compradas separadas'));
       li.append(el('span', { class: 'pos' }, String(i + 1) + 'º'), what, el('span', { class: 'pr' }, brl(o.preco)));
       rs.append(li);
+    });
+  }
+
+  function linha(lista, pos, texto, preco, sub) {
+    const li = el('li');
+    const what = el('span', { class: 'what' }, texto);
+    if (sub) what.append(el('small', {}, sub));
+    li.append(el('span', { class: 'pos' }, pos), what, el('span', { class: 'pr' }, preco || ''));
+    lista.append(li);
+  }
+
+  function mesesAte(alvo) {
+    const h = new Date(); const [aa, ma] = parts(alvo);
+    return Math.max(1, (aa - h.getFullYear()) * 12 + (ma - (h.getMonth() + 1)));
+  }
+
+  function renderExtras(hist, fixas, promos) {
+    // Sua viagem
+    const fx = $('fixa'); fx.replaceChildren();
+    const doFixo = fixas.filter((f) => f.ida === '2027-10-09' && f.volta === '2027-10-17' && f.preco != null).sort((a, b) => b.checked_at.localeCompare(a.checked_at));
+    if (!doFixo.length) linha(fx, '—', 'Aparece depois da próxima verificação do robô.');
+    else {
+      const f = doFixo[0], ant = doFixo[1];
+      const sub = [f.companhia, f.voos_ida, f.obs].filter(Boolean).join(' · ') + ' · visto em ' + dm(f.checked_at);
+      linha(fx, '✈', 'Ida ' + dia(f.ida) + ' → volta ' + dia(f.volta), brl(f.preco), sub);
+      if (ant) linha(fx, '↺', 'Verificação anterior (' + dm(ant.checked_at) + ')', brl(ant.preco));
+      linha(fx, '≈', f.preco < REF ? 'Abaixo da referência' : f.preco > REF ? 'Acima da referência' : 'Igual à referência', brl(REF));
+    }
+
+    // Pagamento
+    const pg = $('pagamento'); pg.replaceChildren();
+    const m = new Map();
+    for (const r of hist) { const a = m.get(r.ida); if (!a || r.checked_at >= a.checked_at) m.set(r.ida, r); }
+    const melhor = [...m.values()].filter((r) => r.preco != null).sort((a, b) => a.preco - b.preco || a.ida.localeCompare(b.ida))[0];
+    if (!melhor) { linha(pg, '—', 'Sem preço ainda.'); }
+    else {
+      const p = melhor.preco;
+      const umMesAntes = new Date(Date.parse(melhor.ida + 'T12:00:00Z') - 30 * 86400000).toISOString().slice(0, 10);
+      const nAntes = mesesAte(umMesAntes), nViagem = mesesAte(melhor.ida);
+      $('pg-nota').textContent = 'Para o menor preço do momento (ida ' + dia(melhor.ida) + ')';
+      linha(pg, '1x', 'À vista', brl(p));
+      linha(pg, '4x', 'Sem juros (padrão LATAM)', brl(Math.ceil(p / 4)));
+      linha(pg, '10x', 'Sem juros (só em promoção)', brl(Math.ceil(p / 10)));
+      linha(pg, nAntes + 'x', 'Quitando 1 mês antes da viagem', brl(Math.ceil(p / nAntes)));
+      linha(pg, nViagem + 'x', 'Quitando até a viagem', brl(Math.ceil(p / nViagem)));
+    }
+
+    // Promoções
+    const pr = $('promos'); pr.replaceChildren();
+    const lista = promos.slice().reverse().slice(0, 12);
+    if (!lista.length) linha(pr, '—', 'Nenhuma promoção relevante encontrada ainda. O robô verifica todo dia.');
+    lista.forEach((p) => {
+      const li = el('li');
+      const what = el('span', { class: 'what' });
+      const u = safeLink(p.link);
+      if (u) what.append(el('a', { href: u, target: '_blank', rel: 'noopener' }, p.titulo)); else what.textContent = p.titulo;
+      what.append(el('small', {}, (p.tipo === 'cartão' ? 'Cartão/pontos' : 'Passagem') + ' · ' + p.fonte + ' · ' + dm(p.publicado || p.visto_em)));
+      li.append(el('span', { class: 'pos' }, p.tipo === 'cartão' ? '💳' : '✈'), what, el('span'));
+      pr.append(li);
     });
   }
 
