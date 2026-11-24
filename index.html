@@ -191,6 +191,11 @@
       </div>
     </div>
     <div class="rank">
+      <h3>Outras companhias (sua viagem)</h3>
+      <span class="muted" style="font-size:.82rem">Melhor preço de cada companhia em bilhete único e montando por partes via Santiago, sempre com tempo de viagem parecido</span>
+      <ol id="cias"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
+    </div>
+    <div class="rank">
       <h3>Promoções e cupons</h3>
       <span class="muted" style="font-size:.82rem">LATAM, Chile, seus cartões (PicPay, Mercado Pago, Sicoob, Nubank, Santander/Esfera) e cupons só de sites confiáveis (LATAM, Decolar, MaxMilhas, ViajaNet, Zupper, Booking, Expedia, Smiles) · fontes: Passageiro de Primeira e Melhores Destinos</span>
       <ol id="promos"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
@@ -421,6 +426,24 @@
       linha(fx, '✈', 'Ida ' + dia(f.ida) + ' → volta ' + dia(f.volta), brl(f.preco), sub);
       if (ant) linha(fx, '↺', 'Verificação anterior (' + dm(ant.checked_at) + ')', brl(ant.preco));
       linha(fx, '≈', f.preco < REF ? 'Abaixo da referência' : f.preco > REF ? 'Acima da referência' : 'Igual à referência', brl(REF));
+    }
+
+    // Outras companhias
+    const ci = $('cias'); ci.replaceChildren();
+    const fc = doFixo[0];
+    if (!fc) linha(ci, '—', 'Aparece depois da próxima verificação do robô.');
+    else {
+      const listaCias = fc.por_cia && fc.por_cia.length ? fc.por_cia : [{ cia: fc.companhia || '?', preco: fc.preco, voos: fc.voos_ida, obs: fc.obs }];
+      listaCias.forEach((c, i) => linha(ci, String(i + 1) + 'º', c.cia + ' (bilhete único)', brl(c.preco), [c.voos, c.obs].filter(Boolean).join(' · ')));
+      if (fc.partes && fc.partes.t1 && fc.partes.t2) {
+        const p = fc.partes;
+        linha(ci, '⇄', 'Por partes: ' + p.t1[0].cia + ' até Santiago + ' + p.t2[0].cia + ' até Punta Arenas', brl(p.total), 'Dois bilhetes separados; confira se dá tempo de conexão em Santiago (pelo menos 3h)');
+        const outra1 = p.t1.find((c) => !/latam/i.test(c.cia));
+        if (outra1) linha(ci, '•', 'Floripa ⇄ Santiago por ' + outra1.cia, brl(outra1.preco), outra1.obs);
+        const outra2 = p.t2.find((c) => !/latam/i.test(c.cia));
+        if (outra2) linha(ci, '•', 'Santiago ⇄ Punta Arenas por ' + outra2.cia, brl(outra2.preco), outra2.obs);
+      }
+      if (listaCias.length <= 1) linha(ci, 'ℹ', 'Por enquanto só a LATAM vende essa rota num bilhete só para outubro de 2027. Outras companhias entram aqui sozinhas quando abrirem as vendas.', '');
     }
 
     // Pagamento
