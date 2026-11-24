@@ -24,7 +24,13 @@ const VIAGENS_FIXAS = [{ ida: '2027-10-09', volta: '2027-10-17', nome: 'Sua viag
 const PARCELAS_PADRAO = 4;
 const PARCELAS_PROMO = 10;
 // Promoções: feeds gratuitos e palavras que interessam
-const FEEDS = ['https://passageirodeprimeira.com/feed/', 'https://www.melhoresdestinos.com.br/feed'];
+const FEEDS = ['https://passageirodeprimeira.com/feed/', 'https://www.melhoresdestinos.com.br/feed',
+  'https://www.melhoresdestinos.com.br/?s=cupom&feed=rss2', 'https://passageirodeprimeira.com/?s=cupom&feed=rss2'];
+// Cupons: só de lojas confiáveis que vendem passagem (123milhas e Hurb ficam de fora)
+const RE_CUPOM = /cupo[mn]|c[oó]digo promocional|voucher/i;
+const RE_LOJAS = /latam|decolar|maxmilhas|max milhas|viajanet|zupper|booking|expedia|submarino viagens|smiles|azul|gol linhas|voegol|kayak|skyscanner|cvc/i;
+const RE_NAO_CONFIAVEL = /123 ?milhas|hurb/i;
+const RE_AEREO = /passage|voo|a[eé]re|milhas/i;
 const RE_VIAGEM = /latam|chile|santiago|punta arenas|patag[oô]nia|10x sem juros|12x sem juros/i;
 const RE_BANCOS = /picpay|mercado ?pago|sicoob|coopera|nubank|ultravioleta|santander|esfera/i;
 const RE_VIAGEM_GERAL = /passage|milha|pontos|cashback|b[oô]nus|latam|viage|transfer|a[eé]re/i;
@@ -233,10 +239,12 @@ for (const feed of FEEDS) {
       const data = new Date(decodificar((bloco.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || ''));
       if (!titulo || !link.startsWith('https://') || vistos.has(link)) continue;
       if (isNaN(data) || Date.now() - data.getTime() > 3 * 86400000) continue;
+      if (RE_NAO_CONFIAVEL.test(titulo)) continue;
+      const cupom = RE_CUPOM.test(titulo) && (RE_LOJAS.test(titulo) || RE_AEREO.test(titulo));
       const viagem = RE_VIAGEM.test(titulo);
       const banco = RE_BANCOS.test(titulo) && RE_VIAGEM_GERAL.test(titulo);
-      if (!viagem && !banco) continue;
-      const tipo = banco ? 'cartão' : 'passagem';
+      if (!viagem && !banco && !cupom) continue;
+      const tipo = cupom ? 'cupom' : banco ? 'cartão' : 'passagem';
       novasPromos.push({ visto_em: hoje, publicado: data.toISOString().slice(0, 10), titulo, link, tipo, fonte: new URL(feed).hostname.replace('www.', '') });
       vistos.add(link);
     }
@@ -286,10 +294,17 @@ else {
     ultSites.opcoes.slice(0, 5).forEach((o, i) => linhas.push(`${i + 1}. ${o.site}: ${fmt(o.preco)}`));
   }
 }
-if (novasPromos.length) {
+const cuponsNovos = novasPromos.filter((p) => p.tipo === 'cupom');
+const outrasNovas = novasPromos.filter((p) => p.tipo !== 'cupom');
+if (cuponsNovos.length) {
+  linhas.push('');
+  linhas.push('🏷️ *Cupons novos* (sites confiáveis de passagem)');
+  cuponsNovos.slice(0, 4).forEach((p) => linhas.push(`• ${p.titulo}\n${p.link}`));
+}
+if (outrasNovas.length) {
   linhas.push('');
   linhas.push('🎁 *Promoções novas* (LATAM, Chile e seus cartões)');
-  novasPromos.slice(0, 5).forEach((p) => linhas.push(`• ${p.titulo}\n${p.link}`));
+  outrasNovas.slice(0, 5).forEach((p) => linhas.push(`• ${p.titulo}\n${p.link}`));
 }
 if (SITE_URL) { linhas.push(''); linhas.push(SITE_URL); }
 const mensagem = linhas.join('\n');
