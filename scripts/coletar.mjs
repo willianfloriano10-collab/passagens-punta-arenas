@@ -241,7 +241,7 @@ for (const feed of FEEDS) {
       if (isNaN(data) || Date.now() - data.getTime() > 3 * 86400000) continue;
       if (RE_NAO_CONFIAVEL.test(titulo)) continue;
       const cupom = RE_CUPOM.test(titulo) && (RE_LOJAS.test(titulo) || RE_AEREO.test(titulo));
-      const viagem = RE_VIAGEM.test(titulo);
+      const viagem = RE_VIAGEM.test(titulo) && (!/x sem juros/i.test(titulo) || RE_AEREO.test(titulo) || /latam|chile/i.test(titulo));
       const banco = RE_BANCOS.test(titulo) && RE_VIAGEM_GERAL.test(titulo);
       if (!viagem && !banco && !cupom) continue;
       const tipo = cupom ? 'cupom' : banco ? 'cartão' : 'passagem';
