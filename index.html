@@ -191,8 +191,8 @@
       </div>
     </div>
     <div class="rank">
-      <h3>Promoções (LATAM, Chile e seus cartões)</h3>
-      <span class="muted" style="font-size:.82rem">PicPay, Mercado Pago, Sicoob, Nubank e Santander/Esfera · fontes: Passageiro de Primeira e Melhores Destinos</span>
+      <h3>Promoções e cupons</h3>
+      <span class="muted" style="font-size:.82rem">LATAM, Chile, seus cartões (PicPay, Mercado Pago, Sicoob, Nubank, Santander/Esfera) e cupons só de sites confiáveis (LATAM, Decolar, MaxMilhas, ViajaNet, Zupper, Booking, Expedia, Smiles) · fontes: Passageiro de Primeira e Melhores Destinos</span>
       <ol id="promos"><li><span class="pos">—</span><span class="what">carregando…</span><span></span></li></ol>
     </div>
   </section>
@@ -450,8 +450,8 @@
       const what = el('span', { class: 'what' });
       const u = safeLink(p.link);
       if (u) what.append(el('a', { href: u, target: '_blank', rel: 'noopener' }, p.titulo)); else what.textContent = p.titulo;
-      what.append(el('small', {}, (p.tipo === 'cartão' ? 'Cartão/pontos' : 'Passagem') + ' · ' + p.fonte + ' · ' + dm(p.publicado || p.visto_em)));
-      li.append(el('span', { class: 'pos' }, p.tipo === 'cartão' ? '💳' : '✈'), what, el('span'));
+      what.append(el('small', {}, (p.tipo === 'cupom' ? 'Cupom' : p.tipo === 'cartão' ? 'Cartão/pontos' : 'Passagem') + ' · ' + p.fonte + ' · ' + dm(p.publicado || p.visto_em)));
+      li.append(el('span', { class: 'pos' }, p.tipo === 'cupom' ? '🏷️' : p.tipo === 'cartão' ? '💳' : '✈'), what, el('span'));
       pr.append(li);
     });
   }
