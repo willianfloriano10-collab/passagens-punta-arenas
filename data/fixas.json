@@ -8,6 +8,40 @@
   "companhia": "LATAM",
   "voos_ida": "LA743 + LA81",
   "obs": "1 parada em SCL, 13h 52min",
-  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-09%20through%202027-10-17&hl=pt-BR&curr=BRL"
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-09%20through%202027-10-17&hl=pt-BR&curr=BRL",
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2471,
+    "voos": "LA743 + LA81",
+    "obs": "1 parada em SCL, 13h 52min"
+   }
+  ],
+  "partes": {
+   "t1": [
+    {
+     "cia": "LATAM",
+     "preco": 2187,
+     "voos": "LA741",
+     "obs": "Sem escalas, 3h 50min"
+    },
+    {
+     "cia": "Sky Airline",
+     "preco": 2303,
+     "voos": "H2635",
+     "obs": "Sem escalas, 3h 50min"
+    }
+   ],
+   "t2": [
+    {
+     "cia": "LATAM",
+     "preco": 690,
+     "voos": "LA897",
+     "obs": "Sem escalas, 3h 25min"
+    }
+   ],
+   "total": 2877,
+   "combo": "LATAM + LATAM"
+  }
  }
 ]
