@@ -39,7 +39,7 @@ jobs:
         run: |
           git config user.name "monitor-passagens"
           git config user.email "monitor-passagens@users.noreply.github.com"
-          git add data/historico.json data/sites.json
+          git add data/historico.json data/sites.json data/fixas.json data/promos.json
           if git diff --cached --quiet; then
             echo "Sem mudanças."
           else
