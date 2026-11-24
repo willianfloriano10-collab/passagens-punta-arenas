@@ -175,7 +175,7 @@ else {
   let var_ = '';
   if (antes != null && depois < antes) var_ = ` 🔻 caiu ${fmt(antes - depois)}`;
   else if (antes != null && depois > antes) var_ = ` 🔺 subiu ${fmt(depois - antes)}`;
-  else if (antes != null) var_ = ' (igual a ontem)';
+  else if (antes != null) var_ = ' (sem mudança)';
   linhas.push(`Menor preço: *${fmt(depois)}*${var_}`);
   linhas.push('');
   linhas.push('🏆 *Ranking de datas*');
@@ -193,14 +193,29 @@ if (SITE_URL) { linhas.push(''); linhas.push(SITE_URL); }
 const mensagem = linhas.join('\n');
 console.log('\n' + mensagem);
 
-const destinos = String(process.env.WHATSAPP_DESTINOS || '').split(/[,;\n]/).map((s) => s.trim()).filter(Boolean);
-for (const d of destinos) {
-  const [phone, apikey] = d.split(':').map((s) => s.trim());
-  if (!phone || !apikey) continue;
+// Aceita: "+5548999999999:1234567", "+5548999999999 1234567", ou o link do CallMeBot (phone=...&apikey=...)
+function lerDestino(s) {
+  const ph = s.match(/phone=([^&\s]+)/i), ak = s.match(/apikey=([^&\s]+)/i);
+  if (ph && ak) return { phone: decodeURIComponent(ph[1]).replace(/[^\d+]/g, ''), apikey: decodeURIComponent(ak[1]).trim() };
+  const m = s.match(/(\+?\d[\d\s().-]{9,20}\d)\s*[:=|\s]\s*([A-Za-z0-9]{4,})\s*$/);
+  if (m) return { phone: m[1].replace(/[^\d+]/g, ''), apikey: m[2] };
+  return null;
+}
+const brutos = String(process.env.WHATSAPP_DESTINOS || '').split(/[,;\n]+/).map((s) => s.trim()).filter(Boolean);
+const destinos = [];
+brutos.forEach((s, i) => {
+  const d = lerDestino(s);
+  if (!d) { console.log(`WhatsApp: o destino nº ${i + 1} não está no formato +55DDDNUMERO:CHAVE e foi ignorado.`); return; }
+  if (!d.phone.startsWith('+')) d.phone = '+' + (d.phone.startsWith('55') ? d.phone : '55' + d.phone);
+  destinos.push(d);
+});
+for (const { phone, apikey } of destinos) {
   try {
     const u = 'https://api.callmebot.com/whatsapp.php?phone=' + encodeURIComponent(phone) + '&text=' + encodeURIComponent(mensagem) + '&apikey=' + encodeURIComponent(apikey);
     const r = await fetch(u);
-    console.log(`WhatsApp para ...${phone.slice(-4)}: HTTP ${r.status}`);
+    const corpo = (await r.text()).replace(/<[^>]+>/g, ' ');
+    const situacao = /queued|sent|enviad/i.test(corpo) ? 'enviada' : /apikey|invalid|wrong|error|not/i.test(corpo) ? 'recusada (confira número e chave)' : 'resposta desconhecida';
+    console.log(`WhatsApp para ...${phone.slice(-4)}: HTTP ${r.status}, ${situacao}`);
   } catch (e) { console.log(`WhatsApp para ...${phone.slice(-4)} falhou: ${e.message}`); }
   await new Promise((res) => setTimeout(res, 3000));
 }
