@@ -18,6 +18,16 @@ const MAX_MIN_IDA = 16 * 60;
 const MAX_MIN_VOLTA = 12 * 60;
 const tempoOk = (o, maxMin) => (o.layovers || []).length <= MAX_PARADAS && (!o.total_duration || o.total_duration <= maxMin);
 const SITE_URL = process.env.SITE_URL || '';
+// Viagens com datas fixas que o usuário quer acompanhar todo dia (além do rodízio de 7 dias)
+const VIAGENS_FIXAS = [{ ida: '2027-10-09', volta: '2027-10-17', nome: 'Sua viagem' }];
+// Parcelamento: LATAM costuma dar 4x sem juros; em promoções, 10x sem juros
+const PARCELAS_PADRAO = 4;
+const PARCELAS_PROMO = 10;
+// Promoções: feeds gratuitos e palavras que interessam
+const FEEDS = ['https://passageirodeprimeira.com/feed/', 'https://www.melhoresdestinos.com.br/feed'];
+const RE_VIAGEM = /latam|chile|santiago|punta arenas|patag[oô]nia|10x sem juros|12x sem juros/i;
+const RE_BANCOS = /picpay|mercado ?pago|sicoob|coopera|nubank|ultravioleta|santander|esfera/i;
+const RE_VIAGEM_GERAL = /passage|milha|pontos|cashback|b[oô]nus|latam|viage|transfer|a[eé]re/i;
 
 const key = process.env.SERPAPI_KEY;
 if (!key) { console.error('Falta o segredo SERPAPI_KEY.'); process.exit(1); }
@@ -44,8 +54,30 @@ async function serp(params) {
   return r.json();
 }
 
+const ARQ_FIXAS = new URL('../data/fixas.json', import.meta.url);
+const ARQ_PROMOS = new URL('../data/promos.json', import.meta.url);
 let hist = await lerJson(ARQ, []);
 let sites = await lerJson(ARQ_SITES, []);
+let fixas = await lerJson(ARQ_FIXAS, []);
+let promos = await lerJson(ARQ_PROMOS, []);
+
+// Quantas parcelas mensais cabem entre o mês seguinte à compra e o mês-alvo (inclusive)
+function mesesAte(alvoIso) {
+  const [ah, mh] = hoje.split('-').map(Number);
+  const [aa, ma] = alvoIso.split('-').map(Number);
+  return Math.max(1, (aa - ah) * 12 + (ma - mh));
+}
+function parcelamento(preco, ida) {
+  const umMesAntes = addDias(ida, -30);
+  const nAntes = mesesAte(umMesAntes), nViagem = mesesAte(ida);
+  return {
+    avista: preco,
+    padrao: { n: PARCELAS_PADRAO, valor: Math.ceil(preco / PARCELAS_PADRAO) },
+    promo: { n: PARCELAS_PROMO, valor: Math.ceil(preco / PARCELAS_PROMO) },
+    ate_1_mes_antes: { n: nAntes, valor: Math.ceil(preco / nAntes) },
+    ate_viagem: { n: nViagem, valor: Math.ceil(preco / nViagem) }
+  };
+}
 
 // ---------- 1. Orçamento: quantas buscas ainda restam no mês (consulta grátis) ----------
 let restantesMes = 0;
@@ -78,7 +110,9 @@ for (let d = 1; d <= 31; d++) {
 }
 candidatas.sort((a, b) => b.nota - a.nota || a.ida.localeCompare(b.ida));
 const reservaSites = orcamento >= 4 ? 2 : 0;                    // 2 buscas para o ranking de sites
-const lote = forcar ? candidatas : candidatas.slice(0, Math.min(MAX_POR_DIA, Math.max(0, orcamento - reservaSites)));
+const fixasHoje = VIAGENS_FIXAS.filter((v) => difDias(hoje, v.volta) <= JANELA_VENDA && !fixas.some((f) => f.checked_at === hoje && f.ida === v.ida && f.volta === v.volta && f.preco != null));
+const reservaFixas = orcamento >= 1 ? fixasHoje.length : 0;
+const lote = forcar ? candidatas : candidatas.slice(0, Math.min(MAX_POR_DIA, Math.max(0, orcamento - reservaSites - reservaFixas)));
 console.log(`Buscando ${lote.length} datas: ${lote.map((c) => dm(c.ida)).join(', ') || 'nenhuma'}.`);
 
 // ---------- 3. Buscar preços ----------
@@ -116,6 +150,26 @@ for (const { ida, volta } of lote) {
   const u = novas[novas.length - 1];
   console.log(`${ida} → ${volta}: ${u.preco ?? u.status}`);
 }
+
+// Viagens de datas fixas (ex.: 09/10 → 17/10)
+const fixaAntes = new Map();
+for (const v of VIAGENS_FIXAS) {
+  const ant = fixas.filter((f) => f.ida === v.ida && f.volta === v.volta && f.preco != null && f.checked_at < hoje).sort((a, b) => b.checked_at.localeCompare(a.checked_at))[0];
+  fixaAntes.set(v.ida + v.volta, ant ? ant.preco : null);
+}
+for (const v of (reservaFixas || forcar ? fixasHoje : [])) {
+  const linha = { checked_at: hoje, ida: v.ida, volta: v.volta, nome: v.nome, preco: null, companhia: '', voos_ida: '', obs: '', link: linkGoogle(v.ida, v.volta) };
+  try {
+    const j = await serp({ departure_id: ORIGEM, arrival_id: DESTINO, outbound_date: v.ida, return_date: v.volta, type: '1', adults: '1', travel_class: '1', stops: String(MAX_PARADAS + 1), max_duration: String(MAX_MIN_IDA) });
+    const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number' && tempoOk(o, MAX_MIN_IDA)).sort((a, b) => a.price - b.price);
+    if (ops.length) { const r = resumoVoo(ops[0]); Object.assign(linha, { preco: ops[0].price, companhia: r.companhia, voos_ida: r.voos, obs: r.obs }); }
+    else linha.obs = String(j.error || 'Sem resultados').slice(0, 120);
+  } catch (e) { linha.obs = 'Falha de rede'; }
+  fixas = fixas.filter((f) => !(f.checked_at === hoje && f.ida === v.ida && f.volta === v.volta));
+  fixas.push(linha);
+  console.log(`Fixa ${v.ida} → ${v.volta}: ${linha.preco ?? linha.obs}`);
+}
+fixas = fixas.slice(-200);
 
 function atual(rows) {
   const m = new Map();
@@ -163,6 +217,34 @@ if (melhor && reservaSites && tokens.has(melhor.ida)) {
 
 await writeFile(ARQ, JSON.stringify(hist, null, 1) + '\n', 'utf8');
 await writeFile(ARQ_SITES, JSON.stringify(sites, null, 1) + '\n', 'utf8');
+await writeFile(ARQ_FIXAS, JSON.stringify(fixas, null, 1) + '\n', 'utf8');
+
+// ---------- 4b. Promoções (feeds gratuitos, não gastam busca do SerpApi) ----------
+const decodificar = (s) => s.replace(/<!\[CDATA\[|\]\]>/g, '').replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)))
+  .replace(/&amp;/g, '&').replace(/&quot;/g, '"').replace(/&#039;|&apos;/g, "'").replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+const vistos = new Set(promos.map((p) => p.link));
+const novasPromos = [];
+for (const feed of FEEDS) {
+  try {
+    const xml = await (await fetch(feed, { headers: { 'User-Agent': 'monitor-passagens/1.0' } })).text();
+    for (const bloco of xml.split('<item>').slice(1)) {
+      const titulo = decodificar((bloco.match(/<title>([\s\S]*?)<\/title>/) || [])[1] || '');
+      const link = decodificar((bloco.match(/<link>([\s\S]*?)<\/link>/) || [])[1] || '');
+      const data = new Date(decodificar((bloco.match(/<pubDate>([\s\S]*?)<\/pubDate>/) || [])[1] || ''));
+      if (!titulo || !link.startsWith('https://') || vistos.has(link)) continue;
+      if (isNaN(data) || Date.now() - data.getTime() > 3 * 86400000) continue;
+      const viagem = RE_VIAGEM.test(titulo);
+      const banco = RE_BANCOS.test(titulo) && RE_VIAGEM_GERAL.test(titulo);
+      if (!viagem && !banco) continue;
+      const tipo = banco ? 'cartão' : 'passagem';
+      novasPromos.push({ visto_em: hoje, publicado: data.toISOString().slice(0, 10), titulo, link, tipo, fonte: new URL(feed).hostname.replace('www.', '') });
+      vistos.add(link);
+    }
+  } catch (e) { console.log('Feed falhou: ' + feed); }
+}
+promos = [...promos, ...novasPromos].slice(-60);
+await writeFile(ARQ_PROMOS, JSON.stringify(promos, null, 1) + '\n', 'utf8');
+console.log(`Promoções novas: ${novasPromos.length}`);
 
 // ---------- 5. Resumo diário no WhatsApp ----------
 const depois = minDe(atual(hist));
@@ -177,6 +259,21 @@ else {
   else if (antes != null && depois > antes) var_ = ` 🔺 subiu ${fmt(depois - antes)}`;
   else if (antes != null) var_ = ' (sem mudança)';
   linhas.push(`Menor preço: *${fmt(depois)}*${var_}`);
+  for (const v of VIAGENS_FIXAS) {
+    const f = fixas.filter((x) => x.ida === v.ida && x.volta === v.volta && x.preco != null).sort((a, b) => b.checked_at.localeCompare(a.checked_at))[0];
+    if (!f) continue;
+    const ant = fixaAntes.get(v.ida + v.volta);
+    const dv = ant == null || f.checked_at !== hoje ? '' : f.preco < ant ? ` 🔻 caiu ${fmt(ant - f.preco)}` : f.preco > ant ? ` 🔺 subiu ${fmt(f.preco - ant)}` : ' (sem mudança)';
+    linhas.push(`📌 ${v.nome} ${dm(v.ida)} → ${dm(v.volta)}: *${fmt(f.preco)}*${dv}`);
+  }
+  const pg = parcelamento(depois, agora[0].ida);
+  linhas.push('');
+  linhas.push('💳 *Pagamento* (menor preço)');
+  linhas.push(`À vista: ${fmt(pg.avista)}`);
+  linhas.push(`${pg.padrao.n}x sem juros (padrão LATAM): ${pg.padrao.n}x ${fmt(pg.padrao.valor)}`);
+  linhas.push(`${pg.promo.n}x sem juros (só em promoção): ${pg.promo.n}x ${fmt(pg.promo.valor)}`);
+  linhas.push(`Quitando 1 mês antes da viagem: até ${pg.ate_1_mes_antes.n}x ${fmt(pg.ate_1_mes_antes.valor)}`);
+  linhas.push(`Quitando até a viagem: até ${pg.ate_viagem.n}x ${fmt(pg.ate_viagem.valor)}`);
   linhas.push('');
   linhas.push('🏆 *Ranking de datas*');
   agora.slice(0, 5).forEach((r, i) => linhas.push(`${i + 1}. ida ${dm(r.ida)} → volta ${dm(r.volta)}: ${fmt(r.preco)}${segundaQuinzena(r.ida) ? ' ⭐' : ''}`));
@@ -188,6 +285,11 @@ else {
     linhas.push(`🛒 *Onde comprar* (ida ${dm(ultSites.ida)})`);
     ultSites.opcoes.slice(0, 5).forEach((o, i) => linhas.push(`${i + 1}. ${o.site}: ${fmt(o.preco)}`));
   }
+}
+if (novasPromos.length) {
+  linhas.push('');
+  linhas.push('🎁 *Promoções novas* (LATAM, Chile e seus cartões)');
+  novasPromos.slice(0, 5).forEach((p) => linhas.push(`• ${p.titulo}\n${p.link}`));
 }
 if (SITE_URL) { linhas.push(''); linhas.push(SITE_URL); }
 const mensagem = linhas.join('\n');
