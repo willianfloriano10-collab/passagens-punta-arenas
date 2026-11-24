@@ -116,8 +116,8 @@ for (let d = 1; d <= 31; d++) {
 }
 candidatas.sort((a, b) => b.nota - a.nota || a.ida.localeCompare(b.ida));
 const reservaSites = orcamento >= 4 ? 2 : 0;                    // 2 buscas para o ranking de sites
-const fixasHoje = VIAGENS_FIXAS.filter((v) => difDias(hoje, v.volta) <= JANELA_VENDA && !fixas.some((f) => f.checked_at === hoje && f.ida === v.ida && f.volta === v.volta && f.preco != null));
-const reservaFixas = orcamento >= 1 ? fixasHoje.length : 0;
+const fixasHoje = VIAGENS_FIXAS.filter((v) => difDias(hoje, v.volta) <= JANELA_VENDA && !(!forcar && fixas.some((f) => f.checked_at === hoje && f.ida === v.ida && f.volta === v.volta && f.preco != null)));
+const reservaFixas = orcamento >= 8 ? fixasHoje.length * 3 : orcamento >= 1 ? fixasHoje.length : 0; // 3 = bilhete único + 2 trechos por partes
 const lote = forcar ? candidatas : candidatas.slice(0, Math.min(MAX_POR_DIA, Math.max(0, orcamento - reservaSites - reservaFixas)));
 console.log(`Buscando ${lote.length} datas: ${lote.map((c) => dm(c.ida)).join(', ') || 'nenhuma'}.`);
 
@@ -135,6 +135,25 @@ function resumoVoo(op) {
   };
 }
 
+// Melhor preço de cada companhia aérea (sem gastar busca extra)
+function porCia(ops) {
+  const m = new Map();
+  for (const o of ops) { const r = resumoVoo(o); const cia = r.companhia || '?'; if (!m.has(cia) || o.price < m.get(cia).preco) m.set(cia, { cia, preco: o.price, voos: r.voos, obs: r.obs }); }
+  return [...m.values()].sort((a, b) => a.preco - b.preco).slice(0, 6);
+}
+// Montagem por partes via Santiago (2 bilhetes): Floripa ⇄ Santiago + Santiago ⇄ Punta Arenas
+async function trecho(de, para, ida, volta, maxMin) {
+  const j = await serp({ departure_id: de, arrival_id: para, outbound_date: ida, return_date: volta, type: '1', adults: '1', travel_class: '1', stops: '2' });
+  const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number' && tempoOk(o, maxMin)).sort((a, b) => a.price - b.price);
+  return porCia(ops);
+}
+async function porPartes(ida, volta) {
+  const t1 = await trecho(ORIGEM, 'SCL', ida, volta, 10 * 60);
+  const t2 = await trecho('SCL', DESTINO, ida, volta, 6 * 60);
+  if (!t1.length || !t2.length) return null;
+  return { t1, t2, total: t1[0].preco + t2[0].preco, combo: t1[0].cia + ' + ' + t2[0].cia };
+}
+
 const novas = [];
 const tokens = new Map();
 for (const { ida, volta } of lote) {
@@ -144,7 +163,7 @@ for (const { ida, volta } of lote) {
     const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number' && tempoOk(o, MAX_MIN_IDA)).sort((a, b) => a.price - b.price);
     if (ops.length) {
       const r = resumoVoo(ops[0]);
-      novas.push({ ...base, companhia: r.companhia, voos_ida: r.voos, obs: r.obs, saida: r.saida, chegada: r.chegada, preco: ops[0].price, status: 'disponivel', faixa_tipica: j.price_insights?.typical_price_range || null });
+      novas.push({ ...base, companhia: r.companhia, voos_ida: r.voos, obs: r.obs, saida: r.saida, chegada: r.chegada, preco: ops[0].price, status: 'disponivel', faixa_tipica: j.price_insights?.typical_price_range || null, por_cia: porCia(ops) });
       if (ops[0].departure_token) tokens.set(ida, ops[0].departure_token);
     } else {
       const msg = String(j.error || 'Sem resultados');
@@ -168,9 +187,12 @@ for (const v of (reservaFixas || forcar ? fixasHoje : [])) {
   try {
     const j = await serp({ departure_id: ORIGEM, arrival_id: DESTINO, outbound_date: v.ida, return_date: v.volta, type: '1', adults: '1', travel_class: '1', stops: String(MAX_PARADAS + 1), max_duration: String(MAX_MIN_IDA) });
     const ops = [...(j.best_flights || []), ...(j.other_flights || [])].filter((o) => typeof o.price === 'number' && tempoOk(o, MAX_MIN_IDA)).sort((a, b) => a.price - b.price);
-    if (ops.length) { const r = resumoVoo(ops[0]); Object.assign(linha, { preco: ops[0].price, companhia: r.companhia, voos_ida: r.voos, obs: r.obs }); }
+    if (ops.length) { const r = resumoVoo(ops[0]); Object.assign(linha, { preco: ops[0].price, companhia: r.companhia, voos_ida: r.voos, obs: r.obs, por_cia: porCia(ops) }); }
     else linha.obs = String(j.error || 'Sem resultados').slice(0, 120);
   } catch (e) { linha.obs = 'Falha de rede'; }
+  if (forcar || reservaFixas >= fixasHoje.length * 3) {
+    try { linha.partes = await porPartes(v.ida, v.volta); } catch (e) { console.log('Por partes falhou'); }
+  }
   fixas = fixas.filter((f) => !(f.checked_at === hoje && f.ida === v.ida && f.volta === v.volta));
   fixas.push(linha);
   console.log(`Fixa ${v.ida} → ${v.volta}: ${linha.preco ?? linha.obs}`);
@@ -273,6 +295,8 @@ else {
     const ant = fixaAntes.get(v.ida + v.volta);
     const dv = ant == null || f.checked_at !== hoje ? '' : f.preco < ant ? ` 🔻 caiu ${fmt(ant - f.preco)}` : f.preco > ant ? ` 🔺 subiu ${fmt(f.preco - ant)}` : ' (sem mudança)';
     linhas.push(`📌 ${v.nome} ${dm(v.ida)} → ${dm(v.volta)}: *${fmt(f.preco)}*${dv}`);
+    if (f.por_cia?.length > 1) linhas.push('   Por companhia: ' + f.por_cia.map((c) => c.cia + ' ' + fmt(c.preco)).join(' · '));
+    if (f.partes) linhas.push(`   Por partes (2 bilhetes, via Santiago): ${f.partes.t1[0].cia} ${fmt(f.partes.t1[0].preco)} + ${f.partes.t2[0].cia} ${fmt(f.partes.t2[0].preco)} = ${fmt(f.partes.total)}`);
   }
   const pg = parcelamento(depois, agora[0].ida);
   linhas.push('');
