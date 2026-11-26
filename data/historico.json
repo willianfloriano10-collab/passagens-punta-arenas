@@ -1084,5 +1084,353 @@
     "obs": "1 parada em SCL, 11h 56min"
    }
   ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-01",
+  "volta": "2027-10-08",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 54min",
+  "saida": "10:15",
+  "chegada": "22:09",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-01%20through%202027-10-08&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 54min"
+   }
+  ],
+  "voos_volta": "LA82 + LA742",
+  "volta_saida": "09:01",
+  "volta_chegada": "17:15"
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-02",
+  "volta": "2027-10-09",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA743 + LA81",
+  "obs": "1 parada em SCL, 13h 52min",
+  "saida": "18:05",
+  "chegada": "07:57",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-02%20through%202027-10-09&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA743 + LA81",
+    "obs": "1 parada em SCL, 13h 52min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-03",
+  "volta": "2027-10-10",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 46min",
+  "saida": "10:15",
+  "chegada": "22:01",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-03%20through%202027-10-10&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 46min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-04",
+  "volta": "2027-10-11",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 54min",
+  "saida": "10:15",
+  "chegada": "22:09",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-04%20through%202027-10-11&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 54min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-05",
+  "volta": "2027-10-12",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 52min",
+  "saida": "10:15",
+  "chegada": "22:07",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-05%20through%202027-10-12&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 52min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-06",
+  "volta": "2027-10-13",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 48min",
+  "saida": "10:15",
+  "chegada": "22:03",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-06%20through%202027-10-13&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 48min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-07",
+  "volta": "2027-10-14",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 56min",
+  "saida": "10:15",
+  "chegada": "22:11",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-07%20through%202027-10-14&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 56min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-08",
+  "volta": "2027-10-15",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 54min",
+  "saida": "10:15",
+  "chegada": "22:09",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-08%20through%202027-10-15&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 54min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-09",
+  "volta": "2027-10-16",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA743 + LA81",
+  "obs": "1 parada em SCL, 13h 52min",
+  "saida": "18:05",
+  "chegada": "07:57",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-09%20through%202027-10-16&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA743 + LA81",
+    "obs": "1 parada em SCL, 13h 52min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-10",
+  "volta": "2027-10-17",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 46min",
+  "saida": "10:15",
+  "chegada": "22:01",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-10%20through%202027-10-17&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 46min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-11",
+  "volta": "2027-10-18",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 54min",
+  "saida": "10:15",
+  "chegada": "22:09",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-11%20through%202027-10-18&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 54min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-12",
+  "volta": "2027-10-19",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 52min",
+  "saida": "10:15",
+  "chegada": "22:07",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-12%20through%202027-10-19&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 52min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-13",
+  "volta": "2027-10-20",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 48min",
+  "saida": "10:15",
+  "chegada": "22:03",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-13%20through%202027-10-20&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 48min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-14",
+  "volta": "2027-10-21",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 56min",
+  "saida": "10:15",
+  "chegada": "22:11",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-14%20through%202027-10-21&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 56min"
+   }
+  ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-15",
+  "volta": "2027-10-22",
+  "preco": 2466,
+  "status": "disponivel",
+  "companhia": "LATAM",
+  "voos_ida": "LA741 + LA85",
+  "obs": "1 parada em SCL, 11h 54min",
+  "saida": "10:15",
+  "chegada": "22:09",
+  "link": "https://www.google.com/travel/flights?q=Flights%20to%20PUQ%20from%20FLN%20on%202027-10-15%20through%202027-10-22&hl=pt-BR&curr=BRL",
+  "fonte": "serpapi",
+  "faixa_tipica": null,
+  "por_cia": [
+   {
+    "cia": "LATAM",
+    "preco": 2466,
+    "voos": "LA741 + LA85",
+    "obs": "1 parada em SCL, 11h 54min"
+   }
+  ]
  }
 ]

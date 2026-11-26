@@ -125,5 +125,59 @@
     "separado": false
    }
   ]
+ },
+ {
+  "checked_at": "2026-11-26",
+  "ida": "2027-10-01",
+  "volta": "2027-10-08",
+  "voos_ida": "LA741 + LA85",
+  "voos_volta": "LA82 + LA742",
+  "opcoes": [
+   {
+    "site": "LATAM",
+    "preco": 2466,
+    "separado": false
+   },
+   {
+    "site": "Booking.com",
+    "preco": 2530,
+    "separado": false
+   },
+   {
+    "site": "Expedia",
+    "preco": 2549,
+    "separado": false
+   },
+   {
+    "site": "Zupper",
+    "preco": 2579,
+    "separado": false
+   },
+   {
+    "site": "Mytrip",
+    "preco": 2590,
+    "separado": false
+   },
+   {
+    "site": "Gotogate",
+    "preco": 2590,
+    "separado": false
+   },
+   {
+    "site": "Flightnetwork",
+    "preco": 2590,
+    "separado": false
+   },
+   {
+    "site": "ViajaNet",
+    "preco": 2622,
+    "separado": false
+   },
+   {
+    "site": "Decolar",
+    "preco": 2690,
+    "separado": false
+   }
+  ]
  }
 ]
