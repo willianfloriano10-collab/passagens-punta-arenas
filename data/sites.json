@@ -179,5 +179,44 @@
     "separado": false
    }
   ]
+ },
+ {
+  "checked_at": "2026-11-27",
+  "ida": "2027-10-16",
+  "volta": "2027-10-23",
+  "voos_ida": "LA743 + LA81",
+  "voos_volta": "LA82 + LA740",
+  "opcoes": [
+   {
+    "site": "LATAM",
+    "preco": 2412,
+    "separado": false
+   },
+   {
+    "site": "Gotogate",
+    "preco": 3524,
+    "separado": false
+   },
+   {
+    "site": "Flightnetwork",
+    "preco": 3525,
+    "separado": false
+   },
+   {
+    "site": "Mytrip",
+    "preco": 3531,
+    "separado": false
+   },
+   {
+    "site": "ViajaNet",
+    "preco": 3825,
+    "separado": false
+   },
+   {
+    "site": "Decolar",
+    "preco": 3924,
+    "separado": false
+   }
+  ]
  }
 ]
