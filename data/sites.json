@@ -218,5 +218,19 @@
     "separado": false
    }
   ]
+ },
+ {
+  "checked_at": "2026-11-28",
+  "ida": "2027-10-16",
+  "volta": "2027-10-23",
+  "voos_ida": "LA743 + LA81",
+  "voos_volta": "LA82 + LA740",
+  "opcoes": [
+   {
+    "site": "LATAM",
+    "preco": 2332,
+    "separado": false
+   }
+  ]
  }
 ]
